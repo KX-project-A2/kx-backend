@@ -1,5 +1,7 @@
 package com.example.kxbackend.domain.job.entity;
 
+import com.example.kxbackend.domain.job.entity.enums.Status;
+import com.example.kxbackend.domain.job.entity.enums.Type;
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import jakarta.persistence.*;
 import lombok.*;
@@ -21,12 +23,13 @@ public class GenerateJob {
     @JoinColumn(name = "file_id")
     private MediaFile mediaFile;
 
-    @Column(nullable = false, length = 20)
-    private String type; // 'IMAGE', 'VIDEO', 'PROMPT'
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private Type type; // 'IMAGE', 'VIDEO', 'PROMPT'
 
-    @Builder.Default
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private String status = "PENDING"; // 'PENDING', 'RUNNING', 'SUCCESS', 'FAILED'
+    private Status status; // 'PENDING', 'RUNNING', 'SUCCESS', 'FAILED'
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -49,7 +52,7 @@ public class GenerateJob {
     /**
      * 비동기 작업 상태를 변경
      */
-    public void updateStatus(String status) {
+    public void updateStatus(Status status) {
         this.status = status;
     }
 
@@ -57,7 +60,7 @@ public class GenerateJob {
      * 비동기 작업 성공 시 생성된 미디어 파일과 매핑
      */
     public void completeJob(MediaFile mediaFile) {
-        this.status = "SUCCESS";
+        this.status = Status.SUCCESS;
         this.mediaFile = mediaFile;
     }
 }
