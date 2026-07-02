@@ -17,7 +17,7 @@ public class MediaFile {
     private Long id;
 
     @Column(nullable = false, length = 10)
-    private String type; // 'IMAGE' 또는 'VIDEO' (DB에서 CHECK 제약조건 처리 가능)
+    private String type; // 'IMAGE' 또는 'VIDEO'
 
     @Column(name = "file_path", nullable = false)
     private String filePath;
@@ -29,7 +29,7 @@ public class MediaFile {
     private String reversedPrompt;
 
     @Column(length = 512)
-    private String tags; // 검색 및 필터링용 태그 문자열 (콤마 등으로 구분)
+    private String tags; // 검색 및 필터링용 태그 문자열
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
