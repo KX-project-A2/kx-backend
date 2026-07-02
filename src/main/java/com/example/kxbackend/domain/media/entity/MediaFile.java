@@ -1,5 +1,6 @@
 package com.example.kxbackend.domain.media.entity;
 
+import com.example.kxbackend.domain.job.entity.enums.Type;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -16,8 +17,9 @@ public class MediaFile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
-    private String type; // 'IMAGE' 또는 'VIDEO'
+    private Type type; // 'IMAGE' 또는 'VIDEO'
 
     @Column(name = "file_path", nullable = false)
     private String filePath;
