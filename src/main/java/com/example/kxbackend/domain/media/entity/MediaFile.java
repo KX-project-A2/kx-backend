@@ -1,6 +1,7 @@
 package com.example.kxbackend.domain.media.entity;
 
 import com.example.kxbackend.domain.job.entity.enums.Type;
+import com.example.kxbackend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -16,6 +17,10 @@ public class MediaFile {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
