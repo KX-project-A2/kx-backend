@@ -2,7 +2,9 @@ package com.example.kxbackend.domain.auth.service;
 
 import com.example.kxbackend.domain.auth.dto.request.LoginRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.LogoutRequestDto;
+import com.example.kxbackend.domain.auth.dto.request.ReissueRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.SignUpRequestDto;
+import com.example.kxbackend.domain.auth.entity.RefreshToken;
 import com.example.kxbackend.domain.auth.dto.response.LoginResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.SignUpResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.TokenResponseDto;
@@ -13,7 +15,6 @@ import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
 import com.example.kxbackend.global.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +31,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
-    private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final PasswordEncoder passwordEncoder;
 
     /**
      * 회원가입
@@ -70,6 +71,24 @@ public class AuthService {
 
         TokenResponseDto token = issueTokens(user);
         return LoginResponseDto.of(user, token);
+    }
+
+    /**
+     * 토큰 재발급
+     * 1. refresh token 유효성 검증
+     * 2. 새 access/refresh token 발급
+     * 3. refresh token rotation
+     */
+    @Transactional
+    public TokenResponseDto reissue(ReissueRequestDto request) {
+        RefreshToken savedToken = refreshTokenService.findValidToken(request.refreshToken());
+        User user = savedToken.getUser();
+
+        String newAccessToken = jwtTokenProvider.createAccessToken(user.getId(), user.getRole());
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getId());
+
+        refreshTokenService.rotate(request.refreshToken(), user, newRefreshToken);
+        return new TokenResponseDto(newAccessToken, newRefreshToken);
     }
 
     /**
