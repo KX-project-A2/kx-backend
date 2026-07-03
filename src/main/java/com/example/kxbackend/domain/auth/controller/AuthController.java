@@ -2,9 +2,11 @@ package com.example.kxbackend.domain.auth.controller;
 
 import com.example.kxbackend.domain.auth.dto.request.LoginRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.LogoutRequestDto;
+import com.example.kxbackend.domain.auth.dto.request.ReissueRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.SignUpRequestDto;
 import com.example.kxbackend.domain.auth.dto.response.LoginResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.SignUpResponseDto;
+import com.example.kxbackend.domain.auth.dto.response.TokenResponseDto;
 import com.example.kxbackend.domain.auth.service.AuthService;
 import com.example.kxbackend.global.response.ApiResponse;
 import jakarta.validation.Valid;
@@ -45,6 +47,16 @@ public class AuthController {
     public ApiResponse<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto request) {
         LoginResponseDto response = authService.login(request);
         return ApiResponse.success("로그인에 성공했습니다.", response);
+    }
+
+    /**
+     * 토큰 재발급
+     * - refresh token 검증 후 새 JWT 토큰을 발급한다.
+     */
+    @PostMapping("/reissue")
+    public ApiResponse<TokenResponseDto> reissue(@Valid @RequestBody ReissueRequestDto request) {
+        TokenResponseDto response = authService.reissue(request);
+        return ApiResponse.success("토큰이 재발급되었습니다.", response);
     }
 
     /**
