@@ -1,7 +1,7 @@
 package com.example.kxbackend.domain.media.entity;
 
-import com.example.kxbackend.domain.job.entity.GenerateJob;
-import com.example.kxbackend.domain.job.entity.GeneratePrompt;
+import com.example.kxbackend.domain.generate.entity.GenerateJob;
+import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
 import com.example.kxbackend.domain.user.entity.User;
 import jakarta.persistence.*;

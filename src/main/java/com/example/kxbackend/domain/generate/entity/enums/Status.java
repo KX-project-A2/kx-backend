@@ -1,4 +1,4 @@
-package com.example.kxbackend.domain.job.entity.enums;
+package com.example.kxbackend.domain.generate.entity.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

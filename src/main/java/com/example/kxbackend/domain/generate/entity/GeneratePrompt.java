@@ -1,6 +1,6 @@
-package com.example.kxbackend.domain.job.entity;
+package com.example.kxbackend.domain.generate.entity;
 
-import com.example.kxbackend.domain.job.entity.enums.PromptKind;
+import com.example.kxbackend.domain.generate.entity.enums.PromptKind;
 import jakarta.persistence.*;
 import lombok.*;
 

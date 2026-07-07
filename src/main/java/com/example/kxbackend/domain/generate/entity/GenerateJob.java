@@ -1,8 +1,8 @@
-package com.example.kxbackend.domain.job.entity;
+package com.example.kxbackend.domain.generate.entity;
 
-import com.example.kxbackend.domain.job.entity.enums.PromptKind;
-import com.example.kxbackend.domain.job.entity.enums.Status;
-import com.example.kxbackend.domain.job.entity.enums.Type;
+import com.example.kxbackend.domain.generate.entity.enums.PromptKind;
+import com.example.kxbackend.domain.generate.entity.enums.Status;
+import com.example.kxbackend.domain.generate.entity.enums.Type;
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.user.entity.User;
 import jakarta.persistence.*;

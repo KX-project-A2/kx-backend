@@ -1,6 +1,6 @@
-package com.example.kxbackend.domain.job.repository;
+package com.example.kxbackend.domain.generate.repository;
 
-import com.example.kxbackend.domain.job.entity.GenerateJob;
+import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
