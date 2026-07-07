@@ -22,3 +22,8 @@ jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
+
+ai:
+  fal:
+    base-url: ${FAL_BASE_URL:https://queue.fal.run}
+    api-key: ${FAL_KEY:}
