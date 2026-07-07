@@ -1,14 +1,13 @@
-package com.example.kxbackend.domain.job.entity.enums;
+package com.example.kxbackend.domain.media.entity.enums;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum Type {
+public enum MediaType {
     IMAGE("IMAGE", "이미지"),
-    VIDEO("VIDEO", "영상"),
-    PROMPT("PROMPT", "프롬프트");
+    VIDEO("VIDEO", "영상");
 
     private final String key;
     private final String description;
