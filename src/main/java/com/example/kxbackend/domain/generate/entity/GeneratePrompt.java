@@ -1,35 +1,44 @@
 package com.example.kxbackend.domain.job.entity;
 
-import com.example.kxbackend.domain.job.entity.enums.Status;
-import com.example.kxbackend.domain.job.entity.enums.Type;
-import com.example.kxbackend.domain.media.entity.MediaFile;
+import com.example.kxbackend.domain.job.entity.enums.PromptKind;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "generate_job")
+@Table(
+        name = "generate_prompt",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_generate_prompt_order",
+                        columnNames = {"generate_job_id", "kind", "prompt_order"}
+                )
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class GenerateJob {
+public class GeneratePrompt {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "file_id")
-    private MediaFile mediaFile;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 10)
-    private Type type; // 'IMAGE', 'VIDEO', 'PROMPT'
+    @JoinColumn(name = "generate_job_id", nullable = false)
+    private GenerateJob generateJob;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private Status status; // 'PENDING', 'RUNNING', 'SUCCESS', 'FAILED'
+    private PromptKind kind;
+
+    @Column(name = "prompt_order", nullable = false)
+    private int promptOrder;
+
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -47,20 +56,5 @@ public class GenerateJob {
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
-    }
-
-    /**
-     * 비동기 작업 상태를 변경
-     */
-    public void updateStatus(Status status) {
-        this.status = status;
-    }
-
-    /**
-     * 비동기 작업 성공 시 생성된 미디어 파일과 매핑
-     */
-    public void completeJob(MediaFile mediaFile) {
-        this.status = Status.SUCCESS;
-        this.mediaFile = mediaFile;
     }
 }

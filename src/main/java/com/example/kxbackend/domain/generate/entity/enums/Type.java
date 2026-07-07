@@ -5,11 +5,9 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum Status {
-    PENDING("PENDING", "작업 대기 중"),
-    RUNNING("RUNNING", "작업 진행 중"),
-    SUCCESS("SUCCESS", "작업 완료"),
-    FAILED("FAILED", "작업 실패");
+public enum Type {
+    TEXT_TO_IMAGE("TEXT_TO_IMAGE", "프롬프트 기반 이미지 생성"),
+    IMAGE_TO_VIDEO("IMAGE_TO_VIDEO", "이미지 기반 영상 생성");
 
     private final String key;
     private final String description;
