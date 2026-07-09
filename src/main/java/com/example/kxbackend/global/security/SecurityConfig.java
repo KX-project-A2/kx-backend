@@ -30,6 +30,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/reissue",
                                 "/api/auth/logout",
+                                "/api/generate/webhooks/fal",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()

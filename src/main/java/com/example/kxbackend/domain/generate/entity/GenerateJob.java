@@ -38,6 +38,15 @@ public class GenerateJob {
     @Column(name = "fal_request_id", unique = true, length = 100)
     private String falRequestId;
 
+    @Column(name = "fal_model_id", length = 200)
+    private String falModelId;
+
+    @Column(name = "fal_status_url", length = 1000)
+    private String falStatusUrl;
+
+    @Column(name = "fal_response_url", length = 1000)
+    private String falResponseUrl;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "input_media_file_id")
     private MediaFile inputMediaFile;
@@ -96,6 +105,28 @@ public class GenerateJob {
      */
     public void submit(String falRequestId) {
         this.falRequestId = falRequestId;
+        this.status = Status.SUBMITTED;
+        this.submittedAt = LocalDateTime.now();
+    }
+
+    /**
+     * fal.ai submit 요청 성공 시 외부 요청 ID와 모델 ID를 기록
+     */
+    public void submit(String falRequestId, String falModelId) {
+        this.falRequestId = falRequestId;
+        this.falModelId = falModelId;
+        this.status = Status.SUBMITTED;
+        this.submittedAt = LocalDateTime.now();
+    }
+
+    /**
+     * fal.ai submit 요청 성공 시 외부 요청 정보와 조회 URL을 기록
+     */
+    public void submit(String falRequestId, String falModelId, String falStatusUrl, String falResponseUrl) {
+        this.falRequestId = falRequestId;
+        this.falModelId = falModelId;
+        this.falStatusUrl = falStatusUrl;
+        this.falResponseUrl = falResponseUrl;
         this.status = Status.SUBMITTED;
         this.submittedAt = LocalDateTime.now();
     }

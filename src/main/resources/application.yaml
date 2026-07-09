@@ -36,3 +36,8 @@ openai:
 storage:
   local:
     base-path: ${STORAGE_BASE_PATH:./storage}
+
+ai:
+  fal:
+    base-url: ${FAL_BASE_URL:https://queue.fal.run}
+    api-key: ${FAL_KEY:}
