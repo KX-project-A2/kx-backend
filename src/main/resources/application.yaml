@@ -23,6 +23,20 @@ jwt:
   access-token-expiration: 3600000
   refresh-token-expiration: 1209600000
 
+openai:
+  api-key: ${OPENAI_API_KEY}
+  base-url: https://api.openai.com/v1
+  image:
+    model: gpt-image-2
+    size: 1024x1024
+    quality: high
+  batch:
+    poll-interval-ms: 60000
+
+storage:
+  local:
+    base-path: ${STORAGE_BASE_PATH:./storage}
+
 ai:
   fal:
     base-url: ${FAL_BASE_URL:https://queue.fal.run}
