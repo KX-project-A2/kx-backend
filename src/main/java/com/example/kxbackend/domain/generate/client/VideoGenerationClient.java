@@ -11,5 +11,9 @@ public interface VideoGenerationClient {
 
     VideoGenerationStatusResult getStatus(String modelId, String requestId, boolean withLogs);
 
+    VideoGenerationStatusResult getStatusByUrl(String statusUrl, boolean withLogs);
+
     VideoGenerationResult getResult(String modelId, String requestId);
+
+    VideoGenerationResult getResultByUrl(String responseUrl);
 }

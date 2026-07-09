@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.net.URI;
 import java.util.Map;
 
 @Component
@@ -46,7 +47,7 @@ public class FalVideoGenerationClient implements VideoGenerationClient {
     public VideoGenerationStatusResult getStatus(String modelId, String requestId, boolean withLogs) {
         FalQueueStatusResponse response = falWebClient.get()
                 .uri(uriBuilder -> {
-                    uriBuilder.path(endpointPath(modelId) + "/requests/{requestId}/status");
+                    uriBuilder.path(queueEndpointPath(modelId) + "/requests/{requestId}/status");
                     if (withLogs) {
                         uriBuilder.queryParam("logs", "1");
                     }
@@ -60,9 +61,32 @@ public class FalVideoGenerationClient implements VideoGenerationClient {
     }
 
     @Override
+    public VideoGenerationStatusResult getStatusByUrl(String statusUrl, boolean withLogs) {
+        FalQueueStatusResponse response = falWebClient.get()
+                .uri(URI.create(withLogs ? appendQueryParam(statusUrl, "logs=1") : statusUrl))
+                .retrieve()
+                .bodyToMono(FalQueueStatusResponse.class)
+                .block();
+
+        return response.toResult();
+    }
+
+    @Override
     public VideoGenerationResult getResult(String modelId, String requestId) {
         Map<String, Object> response = falWebClient.get()
-                .uri(endpointPath(modelId) + "/requests/{requestId}/response", requestId)
+                .uri(queueEndpointPath(modelId) + "/requests/{requestId}", requestId)
+                .retrieve()
+                .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
+                })
+                .block();
+
+        return new VideoGenerationResult(response);
+    }
+
+    @Override
+    public VideoGenerationResult getResultByUrl(String responseUrl) {
+        Map<String, Object> response = falWebClient.get()
+                .uri(URI.create(responseUrl))
                 .retrieve()
                 .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {
                 })
@@ -76,5 +100,17 @@ public class FalVideoGenerationClient implements VideoGenerationClient {
             throw new IllegalArgumentException("fal.ai modelId is required.");
         }
         return "/" + modelId.replaceAll("^/+", "").replaceAll("/+$", "");
+    }
+
+    private String queueEndpointPath(String modelId) {
+        String normalizedModelId = modelId.replaceAll("^/+", "").replaceAll("/+$", "");
+        if (normalizedModelId.startsWith("fal-ai/kling-video/")) {
+            return "/fal-ai/kling-video";
+        }
+        return "/" + normalizedModelId;
+    }
+
+    private String appendQueryParam(String url, String queryParam) {
+        return url.contains("?") ? url + "&" + queryParam : url + "?" + queryParam;
     }
 }
