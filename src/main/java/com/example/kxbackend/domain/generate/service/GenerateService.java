@@ -1,6 +1,7 @@
 package com.example.kxbackend.domain.generate.service;
 
 import com.example.kxbackend.domain.generate.client.VideoGenerationClient;
+import com.example.kxbackend.domain.generate.client.VideoGenerationClientException;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationCommand;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationResult;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationStatusResult;
@@ -36,6 +37,9 @@ public class GenerateService {
 
     private static final String KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID =
             "fal-ai/kling-video/o3/standard/image-to-video";
+    private static final String KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID =
+            "fal-ai/kling-video/o3/standard/reference-to-video";
+    private static final int MAX_REFERENCE_IMAGE_COUNT = 4;
 
     private final GenerateJobRepository generateJobRepository;
     private final MediaFileRepository mediaFileRepository;
@@ -48,7 +52,9 @@ public class GenerateService {
     public GenerateJob createImageToVideoJob(User user, ImageToVideoGenerateRequestDto request) {
         return createImageToVideoJob(
                 user,
-                request.inputMediaFileId(),
+                request.startMediaFileId(),
+                request.endMediaFileId(),
+                request.referenceMediaFileIds(),
                 request.modelId(),
                 request.prompt(),
                 request.webhookUrl(),
@@ -121,39 +127,47 @@ public class GenerateService {
     @Transactional
     public GenerateJob createImageToVideoJob(
             User user,
-            Long inputMediaFileId,
+            Long startMediaFileId,
+            Long endMediaFileId,
+            List<Long> referenceMediaFileIds,
             String modelId,
             String prompt,
             String webhookUrl,
             Map<String, Object> options
     ) {
         String resolvedModelId = resolveFalModelId(modelId);
-        validateImageToVideoInput(user, inputMediaFileId, prompt);
+        validateImageToVideoInput(user, resolvedModelId, startMediaFileId, endMediaFileId, referenceMediaFileIds, prompt);
 
-        MediaFile inputMediaFile = mediaFileRepository.findByIdAndUserId(inputMediaFileId, user.getId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "입력 이미지 파일을 찾을 수 없습니다."));
-
-        if (!StringUtils.hasText(inputMediaFile.getFilePath())) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "입력 이미지 파일 경로가 필요합니다.");
-        }
+        MediaFile startMediaFile = findMediaFile(user, startMediaFileId, "시작 이미지 파일을 찾을 수 없습니다.");
+        MediaFile endMediaFile = findMediaFile(user, endMediaFileId, "끝 이미지 파일을 찾을 수 없습니다.");
+        List<MediaFile> referenceMediaFiles = findReferenceMediaFiles(user, referenceMediaFileIds);
+        MediaFile primaryInputMediaFile = resolvePrimaryInputMediaFile(startMediaFile, endMediaFile, referenceMediaFiles);
 
         GenerateJob generateJob = GenerateJob.builder()
                 .user(user)
                 .type(Type.IMAGE_TO_VIDEO)
                 .status(Status.CREATED)
-                .inputMediaFile(inputMediaFile)
+                .inputMediaFile(primaryInputMediaFile)
                 .build();
         generateJob.addPrompt(PromptKind.SCENE, 1, prompt);
 
         GenerateJob savedJob = generateJobRepository.save(generateJob);
 
-        VideoGenerationSubmitResult submitResult = videoGenerationClient.submit(
-                new VideoGenerationCommand(
-                        resolvedModelId,
-                        buildImageToVideoInput(inputMediaFile.getFilePath(), prompt, options),
-                        webhookUrl
-                )
-        );
+        VideoGenerationSubmitResult submitResult;
+        try {
+            submitResult = videoGenerationClient.submit(
+                    new VideoGenerationCommand(
+                            resolvedModelId,
+                            buildVideoInput(resolvedModelId, startMediaFile, endMediaFile, referenceMediaFiles, prompt, options),
+                            webhookUrl
+                    )
+            );
+        } catch (VideoGenerationClientException exception) {
+            throw new BusinessException(
+                    ErrorCode.AI_PROVIDER_ERROR,
+                    buildFalClientErrorMessage("fal.ai submit 요청 실패", exception)
+            );
+        }
 
         savedJob.submit(
                 submitResult.requestId(),
@@ -167,8 +181,11 @@ public class GenerateService {
     /**
      * Helper 메서드
      */
-    private Map<String, Object> buildImageToVideoInput(
-            String imageUrl,
+    private Map<String, Object> buildVideoInput(
+            String modelId,
+            MediaFile startMediaFile,
+            MediaFile endMediaFile,
+            List<MediaFile> referenceMediaFiles,
             String prompt,
             Map<String, Object> options
     ) {
@@ -176,24 +193,52 @@ public class GenerateService {
         if (options != null) {
             input.putAll(options);
         }
-        input.put("image_url", imageUrl);
+
+        if (isReferenceToVideoModel(modelId)) {
+            putMediaFilePath(input, "start_image_url", startMediaFile);
+            putMediaFilePath(input, "end_image_url", endMediaFile);
+            if (!referenceMediaFiles.isEmpty()) {
+                input.put("image_urls", referenceMediaFiles.stream()
+                        .map(MediaFile::getFilePath)
+                        .toList());
+            }
+        } else {
+            putMediaFilePath(input, "image_url", startMediaFile);
+            putMediaFilePath(input, "end_image_url", endMediaFile);
+        }
+
         input.put("prompt", prompt);
         return input;
     }
 
     private void validateImageToVideoInput(
             User user,
-            Long inputMediaFileId,
+            String modelId,
+            Long startMediaFileId,
+            Long endMediaFileId,
+            List<Long> referenceMediaFileIds,
             String prompt
     ) {
         if (user == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
-        if (inputMediaFileId == null) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "입력 이미지 파일 ID가 필요합니다.");
-        }
         if (!StringUtils.hasText(prompt)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "프롬프트가 필요합니다.");
+        }
+        if (referenceMediaFileIds != null && referenceMediaFileIds.size() > MAX_REFERENCE_IMAGE_COUNT) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "참조 이미지는 최대 4장까지 사용할 수 있습니다.");
+        }
+        if (isReferenceToVideoModel(modelId)) {
+            if (startMediaFileId == null && endMediaFileId == null && isEmpty(referenceMediaFileIds)) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "시작, 끝, 참조 이미지 중 하나 이상이 필요합니다.");
+            }
+            return;
+        }
+        if (startMediaFileId == null) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "image-to-video 모델은 시작 이미지가 필요합니다.");
+        }
+        if (!isEmpty(referenceMediaFileIds)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "image-to-video 모델은 참조 이미지를 지원하지 않습니다.");
         }
     }
 
@@ -202,6 +247,60 @@ public class GenerateService {
             return modelId;
         }
         return KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID;
+    }
+
+    private MediaFile findMediaFile(User user, Long mediaFileId, String notFoundMessage) {
+        if (mediaFileId == null) {
+            return null;
+        }
+        MediaFile mediaFile = mediaFileRepository.findByIdAndUserId(mediaFileId, user.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, notFoundMessage));
+        validateMediaFilePath(mediaFile);
+        return mediaFile;
+    }
+
+    private List<MediaFile> findReferenceMediaFiles(User user, List<Long> referenceMediaFileIds) {
+        if (isEmpty(referenceMediaFileIds)) {
+            return List.of();
+        }
+        return referenceMediaFileIds.stream()
+                .map(mediaFileId -> findMediaFile(user, mediaFileId, "참조 이미지 파일을 찾을 수 없습니다."))
+                .toList();
+    }
+
+    private void validateMediaFilePath(MediaFile mediaFile) {
+        if (!StringUtils.hasText(mediaFile.getFilePath())) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "이미지 파일 경로가 필요합니다.");
+        }
+    }
+
+    private MediaFile resolvePrimaryInputMediaFile(
+            MediaFile startMediaFile,
+            MediaFile endMediaFile,
+            List<MediaFile> referenceMediaFiles
+    ) {
+        if (startMediaFile != null) {
+            return startMediaFile;
+        }
+        if (!referenceMediaFiles.isEmpty()) {
+            return referenceMediaFiles.getFirst();
+        }
+        return endMediaFile;
+    }
+
+    private void putMediaFilePath(Map<String, Object> input, String key, MediaFile mediaFile) {
+        if (mediaFile != null) {
+            input.put(key, mediaFile.getFilePath());
+        }
+    }
+
+    private boolean isReferenceToVideoModel(String modelId) {
+        return KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID.equals(modelId)
+                || modelId.endsWith("/reference-to-video");
+    }
+
+    private boolean isEmpty(List<?> values) {
+        return values == null || values.isEmpty();
     }
 
     private boolean isFailureStatus(String status) {
@@ -219,9 +318,23 @@ public class GenerateService {
             return null;
         }
         if (StringUtils.hasText(generateJob.getFalStatusUrl())) {
-            return videoGenerationClient.getStatusByUrl(generateJob.getFalStatusUrl(), true);
+            try {
+                return videoGenerationClient.getStatusByUrl(generateJob.getFalStatusUrl(), true);
+            } catch (VideoGenerationClientException exception) {
+                throw new BusinessException(
+                        ErrorCode.AI_PROVIDER_ERROR,
+                        buildFalClientErrorMessage("fal.ai status 조회 실패", exception)
+                );
+            }
         }
-        return videoGenerationClient.getStatus(generateJob.getFalModelId(), generateJob.getFalRequestId(), true);
+        try {
+            return videoGenerationClient.getStatus(generateJob.getFalModelId(), generateJob.getFalRequestId(), true);
+        } catch (VideoGenerationClientException exception) {
+            throw new BusinessException(
+                    ErrorCode.AI_PROVIDER_ERROR,
+                    buildFalClientErrorMessage("fal.ai status 조회 실패", exception)
+            );
+        }
     }
 
     private void completeByPollingResultIfPossible(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
@@ -231,14 +344,27 @@ public class GenerateService {
             return;
         }
 
-        VideoGenerationResult result = StringUtils.hasText(generateJob.getFalResponseUrl())
-                ? videoGenerationClient.getResultByUrl(generateJob.getFalResponseUrl())
-                : videoGenerationClient.getResult(generateJob.getFalModelId(), generateJob.getFalRequestId());
+        VideoGenerationResult result;
+        try {
+            result = StringUtils.hasText(generateJob.getFalResponseUrl())
+                    ? videoGenerationClient.getResultByUrl(generateJob.getFalResponseUrl())
+                    : videoGenerationClient.getResult(generateJob.getFalModelId(), generateJob.getFalRequestId());
+        } catch (VideoGenerationClientException exception) {
+            generateJob.fail(buildFalClientErrorMessage("fal.ai result 조회 실패", exception));
+            return;
+        }
 
         String videoUrl = extractVideoUrl(result.payload());
         if (StringUtils.hasText(videoUrl)) {
             completeVideoJob(generateJob, videoUrl);
         }
+    }
+
+    private String buildFalClientErrorMessage(String prefix, VideoGenerationClientException exception) {
+        if (StringUtils.hasText(exception.getResponseBody())) {
+            return prefix + ": HTTP " + exception.getStatusCode() + " - " + exception.getResponseBody();
+        }
+        return prefix + ": HTTP " + exception.getStatusCode();
     }
 
     private void completeVideoJob(GenerateJob generateJob, String videoUrl) {

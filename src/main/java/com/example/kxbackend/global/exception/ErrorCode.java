@@ -17,7 +17,10 @@ public enum ErrorCode {
     INVALID_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_001", "유효하지 않은 리프레시 토큰입니다."),
     EXPIRED_REFRESH_TOKEN(HttpStatus.UNAUTHORIZED, "AUTH_002", "만료된 리프레시 토큰입니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "AUTH_003", "이미 사용 중인 이메일입니다."),
-    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_004", "이메일 또는 비밀번호가 올바르지 않습니다.");
+    INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_004", "이메일 또는 비밀번호가 올바르지 않습니다."),
+
+    // ========== GENERATE (생성) ==========
+    AI_PROVIDER_ERROR(HttpStatus.BAD_GATEWAY, "GENERATE_001", "AI 생성 API 호출에 실패했습니다.");
 
 
 
