@@ -35,6 +35,8 @@ openai:
     model: gpt-image-2
     size: 1024x1024
     quality: high
+    character-sheet:
+      size: 1536x1024
   batch:
     poll-interval-ms: 60000
 

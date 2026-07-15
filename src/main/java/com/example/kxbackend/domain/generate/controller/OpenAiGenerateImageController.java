@@ -1,5 +1,6 @@
 package com.example.kxbackend.domain.generate.controller;
 
+import com.example.kxbackend.domain.generate.dto.request.CharacterConceptSheetRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.OpenAiGenerateImageRequestDto;
 import com.example.kxbackend.domain.generate.dto.response.OpenAiGenerateImageJobResponseDto;
 import com.example.kxbackend.domain.generate.service.OpenAiGenerateImageService;
@@ -39,6 +40,20 @@ public class OpenAiGenerateImageController {
         OpenAiGenerateImageJobResponseDto response =
                 openAiGenerateImageService.requestImageGeneration(principal.getId(), request);
         return ApiResponse.success("OpenAI 이미지 생성 요청이 접수되었습니다.", response);
+    }
+
+    /**
+     * 구조화된 캐릭터 데이터로 공식 캐릭터 설정표(Concept Art Sheet) 생성을 요청한다.
+     */
+    @PostMapping("/character-concept-sheet")
+    @ResponseStatus(HttpStatus.ACCEPTED)
+    public ApiResponse<OpenAiGenerateImageJobResponseDto> requestCharacterConceptSheet(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody CharacterConceptSheetRequestDto request
+    ) {
+        OpenAiGenerateImageJobResponseDto response =
+                openAiGenerateImageService.requestCharacterConceptSheet(principal.getId(), request);
+        return ApiResponse.success("캐릭터 설정표 생성 요청이 접수되었습니다.", response);
     }
 
     /**
