@@ -1,5 +1,6 @@
 package com.example.kxbackend.domain.generate.service;
 
+import com.example.kxbackend.domain.generate.dto.request.CharacterConceptSheetRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.OpenAiGenerateImageRequestDto;
 import com.example.kxbackend.domain.generate.dto.response.OpenAiGenerateImageJobResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
@@ -8,6 +9,7 @@ import com.example.kxbackend.domain.generate.entity.OpenAiImageGenerateJobOption
 import com.example.kxbackend.domain.generate.entity.enums.PromptKind;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
 import com.example.kxbackend.domain.generate.entity.enums.Type;
+import com.example.kxbackend.domain.generate.prompt.CharacterConceptArtPromptBuilder;
 import com.example.kxbackend.domain.generate.repository.OpenAiImageGenerateJobOptionRepository;
 import com.example.kxbackend.domain.generate.repository.OpenAiImageGenerateJobRepository;
 import com.example.kxbackend.domain.media.entity.MediaFile;
@@ -54,6 +56,7 @@ public class OpenAiGenerateImageService {
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final OpenAiGeneratedImageStorageService openAiGeneratedImageStorageService;
+    private final CharacterConceptArtPromptBuilder characterConceptArtPromptBuilder;
     private final ObjectMapper objectMapper;
 
     @Value("${openai.image.model:gpt-image-2}")
@@ -61,6 +64,9 @@ public class OpenAiGenerateImageService {
 
     @Value("${openai.image.size:1024x1024}")
     private String defaultImageSize;
+
+    @Value("${openai.image.character-sheet.size:1536x1024}")
+    private String defaultCharacterSheetSize;
 
     @Value("${openai.image.quality:high}")
     private String defaultImageQuality;
@@ -70,23 +76,54 @@ public class OpenAiGenerateImageService {
      */
     @Transactional
     public OpenAiGenerateImageJobResponseDto requestImageGeneration(Long userId, OpenAiGenerateImageRequestDto request) {
+        return submitImageGenerationJob(
+                userId,
+                request.prompt(),
+                resolveImageCount(request.imageCount()),
+                resolveSize(request.size()),
+                resolveQuality(request.quality())
+        );
+    }
+
+    /**
+     * 구조화된 캐릭터 데이터로 공식 캐릭터 설정표(Concept Art Sheet) 생성을 요청한다.
+     */
+    @Transactional
+    public OpenAiGenerateImageJobResponseDto requestCharacterConceptSheet(
+            Long userId,
+            CharacterConceptSheetRequestDto request
+    ) {
+        String prompt = characterConceptArtPromptBuilder.build(request);
+        return submitImageGenerationJob(
+                userId,
+                prompt,
+                resolveImageCount(request.imageCount()),
+                resolveCharacterSheetSize(request.size()),
+                resolveQuality(request.quality())
+        );
+    }
+
+    private OpenAiGenerateImageJobResponseDto submitImageGenerationJob(
+            Long userId,
+            String prompt,
+            int imageCount,
+            String size,
+            String quality
+    ) {
         User user = getUser(userId);
-        int imageCount = resolveImageCount(request.imageCount());
-        String size = resolveSize(request.size());
-        String quality = resolveQuality(request.quality());
 
         GenerateJob imageJob = GenerateJob.builder()
                 .user(user)
                 .type(Type.TEXT_TO_IMAGE)
                 .status(Status.CREATED)
                 .build();
-        imageJob.addPrompt(PromptKind.IMAGE, 1, request.prompt());
+        imageJob.addPrompt(PromptKind.IMAGE, 1, prompt);
         openAiImageGenerateJobRepository.save(imageJob);
 
         OpenAiImageGenerateJobOption jobOption = OpenAiImageGenerateJobOption.of(imageJob, imageCount, size, quality);
         openAiImageGenerateJobOptionRepository.save(jobOption);
 
-        String jsonlContent = convertPromptToJsonl(request.prompt(), imageCount, size, quality);
+        String jsonlContent = convertPromptToJsonl(prompt, imageCount, size, quality);
         String fileName = "openai-image-batch-" + imageJob.getId() + ".jsonl";
         String fileId = openAiBatchClient.uploadBatchFile(jsonlContent, fileName);
         String batchId = openAiBatchClient.submitBatchJob(fileId);
@@ -210,6 +247,13 @@ public class OpenAiGenerateImageService {
 
     private String resolveSize(String size) {
         return size == null || size.isBlank() ? defaultImageSize : size;
+    }
+
+    private String resolveCharacterSheetSize(String size) {
+        if (size == null || size.isBlank() || "auto".equalsIgnoreCase(size)) {
+            return defaultCharacterSheetSize;
+        }
+        return size;
     }
 
     private String resolveQuality(String quality) {
