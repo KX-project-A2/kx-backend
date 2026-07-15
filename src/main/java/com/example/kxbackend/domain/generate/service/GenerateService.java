@@ -39,7 +39,10 @@ public class GenerateService {
             "fal-ai/kling-video/o3/standard/image-to-video";
     private static final String KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID =
             "fal-ai/kling-video/o3/standard/reference-to-video";
-    private static final int MAX_REFERENCE_IMAGE_COUNT = 4;
+    private static final String SEEDANCE_REFERENCE_TO_VIDEO_MODEL_ID =
+            "bytedance/seedance-2.0/reference-to-video";
+    private static final int KLING_MAX_REFERENCE_IMAGE_COUNT = 4;
+    private static final int SEEDANCE_MAX_REFERENCE_IMAGE_COUNT = 9;
 
     private final GenerateJobRepository generateJobRepository;
     private final MediaFileRepository mediaFileRepository;
@@ -194,7 +197,13 @@ public class GenerateService {
             input.putAll(options);
         }
 
-        if (isReferenceToVideoModel(modelId)) {
+        if (isSeedanceReferenceToVideoModel(modelId)) {
+            if (!referenceMediaFiles.isEmpty()) {
+                input.put("image_urls", referenceMediaFiles.stream()
+                        .map(MediaFile::getFilePath)
+                        .toList());
+            }
+        } else if (isReferenceToVideoModel(modelId)) {
             putMediaFilePath(input, "start_image_url", startMediaFile);
             putMediaFilePath(input, "end_image_url", endMediaFile);
             if (!referenceMediaFiles.isEmpty()) {
@@ -225,8 +234,20 @@ public class GenerateService {
         if (!StringUtils.hasText(prompt)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "프롬프트가 필요합니다.");
         }
-        if (referenceMediaFileIds != null && referenceMediaFileIds.size() > MAX_REFERENCE_IMAGE_COUNT) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "참조 이미지는 최대 4장까지 사용할 수 있습니다.");
+        if (referenceMediaFileIds != null && referenceMediaFileIds.size() > maxReferenceImageCount(modelId)) {
+            throw new BusinessException(
+                    ErrorCode.INVALID_INPUT_VALUE,
+                    "참조 이미지는 최대 " + maxReferenceImageCount(modelId) + "장까지 사용할 수 있습니다."
+            );
+        }
+        if (isSeedanceReferenceToVideoModel(modelId)) {
+            if (isEmpty(referenceMediaFileIds)) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Seedance reference-to-video 모델은 참조 이미지가 필요합니다.");
+            }
+            if (startMediaFileId != null || endMediaFileId != null) {
+                throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "Seedance reference-to-video 모델은 시작/끝 이미지를 지원하지 않습니다.");
+            }
+            return;
         }
         if (isReferenceToVideoModel(modelId)) {
             if (startMediaFileId == null && endMediaFileId == null && isEmpty(referenceMediaFileIds)) {
@@ -297,6 +318,17 @@ public class GenerateService {
     private boolean isReferenceToVideoModel(String modelId) {
         return KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID.equals(modelId)
                 || modelId.endsWith("/reference-to-video");
+    }
+
+    private boolean isSeedanceReferenceToVideoModel(String modelId) {
+        return SEEDANCE_REFERENCE_TO_VIDEO_MODEL_ID.equals(modelId);
+    }
+
+    private int maxReferenceImageCount(String modelId) {
+        if (isSeedanceReferenceToVideoModel(modelId)) {
+            return SEEDANCE_MAX_REFERENCE_IMAGE_COUNT;
+        }
+        return KLING_MAX_REFERENCE_IMAGE_COUNT;
     }
 
     private boolean isEmpty(List<?> values) {

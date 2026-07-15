@@ -1,17 +1,21 @@
 package com.example.kxbackend.domain.auth.controller;
 
 import com.example.kxbackend.domain.auth.dto.request.LoginRequestDto;
-import com.example.kxbackend.domain.auth.dto.request.LogoutRequestDto;
-import com.example.kxbackend.domain.auth.dto.request.ReissueRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.SignUpRequestDto;
 import com.example.kxbackend.domain.auth.dto.response.LoginResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.SignUpResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.TokenResponseDto;
+import com.example.kxbackend.domain.auth.service.AuthenticatedUserResult;
 import com.example.kxbackend.domain.auth.service.AuthService;
+import com.example.kxbackend.global.exception.BusinessException;
+import com.example.kxbackend.global.exception.ErrorCode;
 import com.example.kxbackend.global.response.ApiResponse;
+import com.example.kxbackend.global.security.AuthCookieService;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,6 +31,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final AuthCookieService authCookieService;
 
     /**
      * 회원가입
@@ -34,9 +39,13 @@ public class AuthController {
      */
     @PostMapping("/signup")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<SignUpResponseDto> signUp(@Valid @RequestBody SignUpRequestDto request) {
-        SignUpResponseDto response = authService.signUp(request);
-        return ApiResponse.success("회원가입이 완료되었습니다.", response);
+    public ApiResponse<SignUpResponseDto> signUp(
+            @Valid @RequestBody SignUpRequestDto request,
+            HttpServletResponse response
+    ) {
+        AuthenticatedUserResult result = authService.signUp(request);
+        authCookieService.addTokenCookies(response, result.token());
+        return ApiResponse.success("회원가입이 완료되었습니다.", SignUpResponseDto.of(result.user()));
     }
 
     /**
@@ -44,9 +53,13 @@ public class AuthController {
      * - 이메일, 비밀번호로 인증 후 JWT 토큰을 발급한다.
      */
     @PostMapping("/login")
-    public ApiResponse<LoginResponseDto> login(@Valid @RequestBody LoginRequestDto request) {
-        LoginResponseDto response = authService.login(request);
-        return ApiResponse.success("로그인에 성공했습니다.", response);
+    public ApiResponse<LoginResponseDto> login(
+            @Valid @RequestBody LoginRequestDto request,
+            HttpServletResponse response
+    ) {
+        AuthenticatedUserResult result = authService.login(request);
+        authCookieService.addTokenCookies(response, result.token());
+        return ApiResponse.success("로그인에 성공했습니다.", LoginResponseDto.of(result.user()));
     }
 
     /**
@@ -54,9 +67,13 @@ public class AuthController {
      * - refresh token 검증 후 새 JWT 토큰을 발급한다.
      */
     @PostMapping("/reissue")
-    public ApiResponse<TokenResponseDto> reissue(@Valid @RequestBody ReissueRequestDto request) {
-        TokenResponseDto response = authService.reissue(request);
-        return ApiResponse.success("토큰이 재발급되었습니다.", response);
+    public ApiResponse<Void> reissue(
+            @CookieValue(value = AuthCookieService.REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken,
+            HttpServletResponse response
+    ) {
+        TokenResponseDto token = authService.reissue(getRequiredRefreshToken(refreshToken));
+        authCookieService.addTokenCookies(response, token);
+        return ApiResponse.success("토큰이 재발급되었습니다.");
     }
 
     /**
@@ -64,8 +81,22 @@ public class AuthController {
      * - refresh token을 무효화한다.
      */
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@Valid @RequestBody LogoutRequestDto request) {
-        authService.logout(request);
+    public ApiResponse<Void> logout(
+            @CookieValue(value = AuthCookieService.REFRESH_TOKEN_COOKIE_NAME, required = false) String refreshToken,
+            HttpServletResponse response
+    ) {
+        if (refreshToken != null) {
+            authService.logout(refreshToken);
+        }
+        authCookieService.deleteTokenCookies(response);
         return ApiResponse.success("로그아웃되었습니다.");
+    }
+
+    private String getRequiredRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new BusinessException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+
+        return refreshToken;
     }
 }
