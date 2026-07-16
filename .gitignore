@@ -2,6 +2,10 @@ HELP.md
 .env
 .env.*
 !.env.example
+certbot/conf/
+certbot/www/
+letsencrypt/
+*.pem
 .gradle
 build/
 !gradle/wrapper/gradle-wrapper.jar

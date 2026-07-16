@@ -1,8 +1,12 @@
 server {
     listen 80;
-    server_name _;
+    server_name ${CERTBOT_DOMAIN};
 
     client_max_body_size 10m;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
 
     location / {
         proxy_pass http://app:8080;
