@@ -1,0 +1,15 @@
+.git
+.github
+.gradle
+.idea
+build
+out
+bin
+.env
+.env.*
+*.iml
+*.iws
+*.ipr
+docs
+README.md
+HELP.md

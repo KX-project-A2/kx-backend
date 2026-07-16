@@ -1,0 +1,38 @@
+services:
+  app:
+    image: ${DOCKER_IMAGE}
+    container_name: kx-backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    env_file:
+      - ${APP_ENV_FILE:-.env}
+    environment:
+      STORAGE_BASE_PATH: /app/storage
+    ports:
+      - "8080:8080"
+    volumes:
+      - kx_storage:/app/storage
+    restart: unless-stopped
+
+  mysql:
+    image: mysql:8.4
+    container_name: kx-mysql
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:?MYSQL_DATABASE is required}
+      MYSQL_USER: ${MYSQL_USER:?MYSQL_USER is required}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required}
+      TZ: Asia/Seoul
+    volumes:
+      - kx_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u$$MYSQL_USER -p$$MYSQL_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  kx_mysql_data:
+  kx_storage:
