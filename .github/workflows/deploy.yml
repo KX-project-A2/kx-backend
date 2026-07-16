@@ -75,13 +75,13 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
-      - name: Copy compose file to EC2
+      - name: Copy deployment files to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          source: docker-compose.aws.yml
+          source: docker-compose.aws.yml,nginx
           target: ${{ secrets.EC2_APP_DIR }}
 
       - name: Deploy on EC2

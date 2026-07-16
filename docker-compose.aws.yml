@@ -1,4 +1,15 @@
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: kx-nginx
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    restart: unless-stopped
+
   app:
     image: ${DOCKER_IMAGE}
     container_name: kx-backend
@@ -9,8 +20,8 @@ services:
       - ${APP_ENV_FILE:-.env}
     environment:
       STORAGE_BASE_PATH: /app/storage
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     volumes:
       - kx_storage:/app/storage
     restart: unless-stopped
