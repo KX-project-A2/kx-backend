@@ -1,39 +1,29 @@
 package com.example.kxbackend.infra.storage;
 
-import com.example.kxbackend.global.exception.BusinessException;
-import com.example.kxbackend.global.exception.ErrorCode;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.UUID;
 
 /**
- * OpenAI로 생성된 이미지를 로컬 디스크에 저장한다.
+ * OpenAI로 생성된 이미지를 저장소에 저장한다.
  */
 @Service
+@RequiredArgsConstructor
 public class OpenAiGeneratedImageStorageService {
 
-    @Value("${storage.local.base-path:./storage}")
-    private String basePath;
+    private static final String CONTENT_TYPE = "image/png";
+
+    private final ObjectStorage objectStorage;
 
     /**
-     * 생성된 이미지 바이너리를 저장하고 상대 경로를 반환한다.
+     * 생성된 이미지 바이너리를 저장하고 object key를 반환한다.
+     * 예: openai-images/{userId}/{uuid}.png
      */
     public String saveGeneratedImage(Long userId, byte[] imageBytes) {
-        try {
-            String fileName = UUID.randomUUID() + ".png";
-            Path directory = Path.of(basePath, "openai-images", String.valueOf(userId));
-            Files.createDirectories(directory);
-
-            Path filePath = directory.resolve(fileName);
-            Files.write(filePath, imageBytes);
-
-            return Path.of("openai-images", String.valueOf(userId), fileName).toString();
-        } catch (IOException exception) {
-            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "생성 이미지 파일 저장에 실패했습니다.");
-        }
+        String fileName = UUID.randomUUID() + ".png";
+        String objectKey = ObjectStorageKeys.generatedImageKey(userId, fileName);
+        objectStorage.put(objectKey, imageBytes, CONTENT_TYPE);
+        return objectKey;
     }
 }
