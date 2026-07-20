@@ -4,6 +4,7 @@ import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 
 public record MediaFileResponseDto(
         Long id,
@@ -17,10 +18,16 @@ public record MediaFileResponseDto(
         String tags,
         Long generateJobId,
         Long generatePromptId,
+        String generatePromptContent,
+        boolean favorite,
         LocalDateTime createdAt
 ) {
 
     public static MediaFileResponseDto from(MediaFile mediaFile) {
+        return from(mediaFile, false);
+    }
+
+    public static MediaFileResponseDto from(MediaFile mediaFile, boolean favorite) {
         return new MediaFileResponseDto(
                 mediaFile.getId(),
                 mediaFile.getType(),
@@ -33,7 +40,13 @@ public record MediaFileResponseDto(
                 mediaFile.getTags(),
                 mediaFile.getGenerateJob() == null ? null : mediaFile.getGenerateJob().getId(),
                 mediaFile.getGeneratePrompt() == null ? null : mediaFile.getGeneratePrompt().getId(),
+                mediaFile.getGeneratePrompt() == null ? null : mediaFile.getGeneratePrompt().getContent(),
+                favorite,
                 mediaFile.getCreatedAt()
         );
+    }
+
+    public static MediaFileResponseDto from(MediaFile mediaFile, Set<Long> favoriteMediaFileIds) {
+        return from(mediaFile, favoriteMediaFileIds.contains(mediaFile.getId()));
     }
 }
