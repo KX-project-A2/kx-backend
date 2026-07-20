@@ -48,11 +48,20 @@ public class MediaFileQueryService {
     }
 
     public MediaFileResponseDto getMediaFile(Long userId, Long mediaFileId) {
-        MediaFile mediaFile = mediaFileRepository.findByIdAndUserId(mediaFileId, userId)
+        MediaFile mediaFile = mediaFileRepository.findByIdAndUserIdAndDeletedFalse(mediaFileId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "미디어 파일을 찾을 수 없습니다."));
 
         boolean favorite = mediaFavoriteRepository.existsByUserIdAndMediaFileId(userId, mediaFileId);
         return MediaFileResponseDto.from(mediaFile, favorite);
+    }
+
+    @Transactional
+    public void deleteMediaFile(Long userId, Long mediaFileId) {
+        MediaFile mediaFile = mediaFileRepository.findByIdAndUserIdAndDeletedFalse(mediaFileId, userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "미디어 파일을 찾을 수 없습니다."));
+
+        mediaFile.softDelete();
+        mediaFavoriteRepository.deleteByUserIdAndMediaFileId(userId, mediaFileId);
     }
 
     public List<RecentMediaWorkResponseDto> getRecentMediaWorks(Long userId, int size) {
@@ -76,7 +85,7 @@ public class MediaFileQueryService {
                         LinkedHashMap::new
                 ));
 
-        List<MediaFile> mediaFiles = mediaFileRepository.findAllByGenerateJob_IdInOrderByCreatedAtDescIdAsc(jobIds);
+        List<MediaFile> mediaFiles = mediaFileRepository.findAllByGenerateJob_IdInAndDeletedFalseOrderByCreatedAtDescIdAsc(jobIds);
         Set<Long> favoriteMediaFileIds = getFavoriteMediaFileIds(userId, mediaFiles);
         Map<Long, List<MediaFile>> mediaFilesByJobId = mediaFiles.stream()
                 .filter(mediaFile -> mediaFile.getGenerateJob() != null)
@@ -85,6 +94,7 @@ public class MediaFileQueryService {
         return jobIds.stream()
                 .map(jobsById::get)
                 .filter(generateJob -> generateJob != null)
+                .filter(generateJob -> mediaFilesByJobId.containsKey(generateJob.getId()))
                 .map(generateJob -> RecentMediaWorkResponseDto.of(
                         generateJob,
                         getFirstPromptContent(generateJob),
@@ -101,8 +111,8 @@ public class MediaFileQueryService {
         }
 
         return type == null
-                ? mediaFileRepository.findAllByUserId(userId, pageable)
-                : mediaFileRepository.findAllByUserIdAndType(userId, type, pageable);
+                ? mediaFileRepository.findAllByUserIdAndDeletedFalse(userId, pageable)
+                : mediaFileRepository.findAllByUserIdAndTypeAndDeletedFalse(userId, type, pageable);
     }
 
     private Set<Long> getFavoriteMediaFileIds(Long userId, List<MediaFile> mediaFiles) {

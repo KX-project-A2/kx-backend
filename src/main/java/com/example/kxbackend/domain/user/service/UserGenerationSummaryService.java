@@ -16,9 +16,9 @@ public class UserGenerationSummaryService {
 
     public GenerationSummaryResponseDto getSummary(Long userId) {
         return new GenerationSummaryResponseDto(
-                mediaFileRepository.countByUserId(userId),
-                mediaFileRepository.countByUserIdAndType(userId, MediaType.IMAGE),
-                mediaFileRepository.countByUserIdAndType(userId, MediaType.VIDEO),
+                mediaFileRepository.countByUserIdAndDeletedFalse(userId),
+                mediaFileRepository.countByUserIdAndTypeAndDeletedFalse(userId, MediaType.IMAGE),
+                mediaFileRepository.countByUserIdAndTypeAndDeletedFalse(userId, MediaType.VIDEO),
                 mediaFileRepository.findLatestCreatedAtByUserId(userId).orElse(null)
         );
     }

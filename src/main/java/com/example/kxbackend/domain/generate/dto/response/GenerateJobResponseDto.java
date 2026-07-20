@@ -3,6 +3,7 @@ package com.example.kxbackend.domain.generate.dto.response;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
 import com.example.kxbackend.domain.generate.entity.enums.Type;
+import com.example.kxbackend.domain.media.entity.MediaFile;
 
 import java.time.LocalDateTime;
 
@@ -23,6 +24,8 @@ public record GenerateJobResponseDto(
 ) {
 
     public static GenerateJobResponseDto from(GenerateJob generateJob) {
+        MediaFile inputMediaFile = activeMediaFile(generateJob.getInputMediaFile());
+        MediaFile resultMediaFile = activeMediaFile(generateJob.getResultMediaFile());
         return new GenerateJobResponseDto(
                 generateJob.getId(),
                 generateJob.getType(),
@@ -31,12 +34,19 @@ public record GenerateJobResponseDto(
                 generateJob.getFalModelId(),
                 generateJob.getFalStatusUrl(),
                 generateJob.getFalResponseUrl(),
-                generateJob.getInputMediaFile() == null ? null : generateJob.getInputMediaFile().getId(),
-                generateJob.getResultMediaFile() == null ? null : generateJob.getResultMediaFile().getId(),
+                inputMediaFile == null ? null : inputMediaFile.getId(),
+                resultMediaFile == null ? null : resultMediaFile.getId(),
                 generateJob.getSubmittedAt(),
                 generateJob.getCompletedAt(),
                 generateJob.getCreatedAt(),
                 generateJob.getUpdatedAt()
         );
+    }
+
+    private static MediaFile activeMediaFile(MediaFile mediaFile) {
+        if (mediaFile == null || mediaFile.isDeleted()) {
+            return null;
+        }
+        return mediaFile;
     }
 }

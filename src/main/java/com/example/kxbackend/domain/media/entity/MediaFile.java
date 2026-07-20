@@ -60,6 +60,13 @@ public class MediaFile {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     public void connectGeneration(GenerateJob generateJob, GeneratePrompt generatePrompt) {
         this.generateJob = generateJob;
         this.generatePrompt = generatePrompt;
@@ -67,6 +74,14 @@ public class MediaFile {
 
     public void updateReversedPrompt(String reversedPrompt) {
         this.reversedPrompt = reversedPrompt;
+    }
+
+    public void softDelete() {
+        if (this.deleted) {
+            return;
+        }
+        this.deleted = true;
+        this.deletedAt = LocalDateTime.now();
     }
 
     @PrePersist

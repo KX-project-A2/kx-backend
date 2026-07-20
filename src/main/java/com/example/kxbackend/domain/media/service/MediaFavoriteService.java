@@ -52,7 +52,7 @@ public class MediaFavoriteService {
     }
 
     private MediaFile getOwnedMediaFile(Long userId, Long mediaFileId) {
-        return mediaFileRepository.findByIdAndUserId(mediaFileId, userId)
+        return mediaFileRepository.findByIdAndUserIdAndDeletedFalse(mediaFileId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "미디어 파일을 찾을 수 없습니다."));
     }
 }

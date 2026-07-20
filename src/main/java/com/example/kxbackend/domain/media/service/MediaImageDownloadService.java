@@ -36,12 +36,8 @@ public class MediaImageDownloadService {
     }
 
     private MediaFile getOwnedMediaFile(Long userId, Long mediaFileId) {
-        MediaFile mediaFile = mediaFileRepository.findById(mediaFileId)
+        MediaFile mediaFile = mediaFileRepository.findByIdAndUserIdAndDeletedFalse(mediaFileId, userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "미디어 파일을 찾을 수 없습니다."));
-
-        if (!mediaFile.getUser().getId().equals(userId)) {
-            throw new BusinessException(ErrorCode.FORBIDDEN, "해당 미디어 파일에 접근할 수 없습니다.");
-        }
 
         return mediaFile;
     }

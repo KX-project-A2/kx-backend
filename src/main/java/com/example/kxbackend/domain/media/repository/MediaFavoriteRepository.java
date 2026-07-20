@@ -26,6 +26,7 @@ public interface MediaFavoriteRepository extends JpaRepository<MediaFavorite, Lo
             from MediaFavorite favorite
             where favorite.user.id = :userId
               and favorite.mediaFile.id in :mediaFileIds
+              and favorite.mediaFile.deleted = false
             """)
     List<Long> findFavoriteMediaFileIds(
             @Param("userId") Long userId,
@@ -36,6 +37,7 @@ public interface MediaFavoriteRepository extends JpaRepository<MediaFavorite, Lo
             select favorite.mediaFile
             from MediaFavorite favorite
             where favorite.user.id = :userId
+              and favorite.mediaFile.deleted = false
             order by favorite.mediaFile.createdAt desc
             """)
     Page<MediaFile> findFavoriteMediaFilesByUserId(
@@ -48,6 +50,7 @@ public interface MediaFavoriteRepository extends JpaRepository<MediaFavorite, Lo
             from MediaFavorite favorite
             where favorite.user.id = :userId
               and favorite.mediaFile.type = :type
+              and favorite.mediaFile.deleted = false
             order by favorite.mediaFile.createdAt desc
             """)
     Page<MediaFile> findFavoriteMediaFilesByUserIdAndType(

@@ -15,6 +15,7 @@ import com.example.kxbackend.domain.generate.entity.enums.PromptKind;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
 import com.example.kxbackend.domain.generate.entity.enums.Type;
 import com.example.kxbackend.domain.generate.repository.GenerateJobRepository;
+import com.example.kxbackend.domain.generate.validation.VideoOptionValidator;
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
 import com.example.kxbackend.domain.media.repository.MediaFileRepository;
@@ -30,23 +31,19 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class GenerateService {
 
-    private static final String KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID =
-            "fal-ai/kling-video/o3/standard/image-to-video";
-    private static final String KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID =
-            "fal-ai/kling-video/o3/standard/reference-to-video";
-    private static final String SEEDANCE_REFERENCE_TO_VIDEO_MODEL_ID =
-            "bytedance/seedance-2.0/reference-to-video";
     private static final int KLING_MAX_REFERENCE_IMAGE_COUNT = 4;
     private static final int SEEDANCE_MAX_REFERENCE_IMAGE_COUNT = 9;
 
     private final GenerateJobRepository generateJobRepository;
     private final MediaFileRepository mediaFileRepository;
     private final VideoGenerationClient videoGenerationClient;
+    private final VideoOptionValidator videoOptionValidator;
 
     /**
      * 요청 DTO 기반 이미지-영상 생성 작업 생성
@@ -138,13 +135,15 @@ public class GenerateService {
             String webhookUrl,
             Map<String, Object> options
     ) {
-        String resolvedModelId = resolveFalModelId(modelId);
-        validateImageToVideoInput(user, resolvedModelId, startMediaFileId, endMediaFileId, referenceMediaFileIds, prompt);
+        String resolvedModelId = videoOptionValidator.resolveModelId(modelId);
+        validateImageToVideoInput(user, resolvedModelId, startMediaFileId, endMediaFileId, referenceMediaFileIds);
+        videoOptionValidator.validate(resolvedModelId, prompt, options);
 
         MediaFile startMediaFile = findMediaFile(user, startMediaFileId, "시작 이미지 파일을 찾을 수 없습니다.");
         MediaFile endMediaFile = findMediaFile(user, endMediaFileId, "끝 이미지 파일을 찾을 수 없습니다.");
         List<MediaFile> referenceMediaFiles = findReferenceMediaFiles(user, referenceMediaFileIds);
         MediaFile primaryInputMediaFile = resolvePrimaryInputMediaFile(startMediaFile, endMediaFile, referenceMediaFiles);
+        String promptContent = resolvePromptContent(prompt, options);
 
         GenerateJob generateJob = GenerateJob.builder()
                 .user(user)
@@ -155,7 +154,7 @@ public class GenerateService {
                 .requestAspectRatio(getOptionValue(options, "aspect_ratio"))
                 .requestResolution(getOptionValue(options, "resolution"))
                 .build();
-        generateJob.addPrompt(PromptKind.SCENE, 1, prompt);
+        generateJob.addPrompt(PromptKind.SCENE, 1, promptContent);
 
         GenerateJob savedJob = generateJobRepository.save(generateJob);
 
@@ -197,7 +196,11 @@ public class GenerateService {
     ) {
         Map<String, Object> input = new LinkedHashMap<>();
         if (options != null) {
-            input.putAll(options);
+            options.forEach((key, value) -> {
+                if (value != null) {
+                    input.put(key, value);
+                }
+            });
         }
 
         if (isSeedanceReferenceToVideoModel(modelId)) {
@@ -219,7 +222,9 @@ public class GenerateService {
             putMediaFilePath(input, "end_image_url", endMediaFile);
         }
 
-        input.put("prompt", prompt);
+        if (StringUtils.hasText(prompt)) {
+            input.put("prompt", prompt);
+        }
         return input;
     }
 
@@ -228,14 +233,10 @@ public class GenerateService {
             String modelId,
             Long startMediaFileId,
             Long endMediaFileId,
-            List<Long> referenceMediaFileIds,
-            String prompt
+            List<Long> referenceMediaFileIds
     ) {
         if (user == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
-        }
-        if (!StringUtils.hasText(prompt)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "프롬프트가 필요합니다.");
         }
         if (referenceMediaFileIds != null && referenceMediaFileIds.size() > maxReferenceImageCount(modelId)) {
             throw new BusinessException(
@@ -266,18 +267,11 @@ public class GenerateService {
         }
     }
 
-    private String resolveFalModelId(String modelId) {
-        if (StringUtils.hasText(modelId)) {
-            return modelId;
-        }
-        return KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID;
-    }
-
     private MediaFile findMediaFile(User user, Long mediaFileId, String notFoundMessage) {
         if (mediaFileId == null) {
             return null;
         }
-        MediaFile mediaFile = mediaFileRepository.findByIdAndUserId(mediaFileId, user.getId())
+        MediaFile mediaFile = mediaFileRepository.findByIdAndUserIdAndDeletedFalse(mediaFileId, user.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, notFoundMessage));
         validateMediaFilePath(mediaFile);
         return mediaFile;
@@ -319,12 +313,11 @@ public class GenerateService {
     }
 
     private boolean isReferenceToVideoModel(String modelId) {
-        return KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID.equals(modelId)
-                || modelId.endsWith("/reference-to-video");
+        return videoOptionValidator.isReferenceToVideoModel(modelId);
     }
 
     private boolean isSeedanceReferenceToVideoModel(String modelId) {
-        return SEEDANCE_REFERENCE_TO_VIDEO_MODEL_ID.equals(modelId);
+        return videoOptionValidator.isSeedanceReferenceToVideoModel(modelId);
     }
 
     private int maxReferenceImageCount(String modelId) {
@@ -469,5 +462,24 @@ public class GenerateService {
         }
         Object value = options.get(key);
         return value == null ? null : Objects.toString(value, null);
+    }
+
+    private String resolvePromptContent(String prompt, Map<String, Object> options) {
+        if (StringUtils.hasText(prompt)) {
+            return prompt;
+        }
+        if (options == null) {
+            return "";
+        }
+        Object multiPrompt = options.get("multi_prompt");
+        if (!(multiPrompt instanceof List<?> shots)) {
+            return "";
+        }
+        return shots.stream()
+                .filter(Map.class::isInstance)
+                .map(Map.class::cast)
+                .map(shot -> Objects.toString(shot.get("prompt"), ""))
+                .filter(StringUtils::hasText)
+                .collect(Collectors.joining("\n\n"));
     }
 }

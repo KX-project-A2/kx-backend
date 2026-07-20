@@ -4,6 +4,7 @@ import com.example.kxbackend.domain.generate.client.dto.VideoGenerationLog;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationStatusResult;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
+import com.example.kxbackend.domain.media.entity.MediaFile;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,6 +33,7 @@ public record GenerateJobStatusResponseDto(
 ) {
 
     public static GenerateJobStatusResponseDto from(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
+        MediaFile resultMediaFile = activeResultMediaFile(generateJob);
         return new GenerateJobStatusResponseDto(
                 generateJob.getId(),
                 generateJob.getStatus(),
@@ -41,17 +43,25 @@ public record GenerateJobStatusResponseDto(
                 falStatus == null ? null : falStatus.responseUrl(),
                 falStatus == null ? List.of() : falStatus.logs(),
                 falStatus == null ? null : falStatus.metrics(),
-                generateJob.getResultMediaFile() == null ? null : generateJob.getResultMediaFile().getId(),
-                generateJob.getResultMediaFile() == null ? null : generateJob.getResultMediaFile().getFilePath(),
-                generateJob.getResultMediaFile() == null ? null : generateJob.getResultMediaFile().getModel(),
-                generateJob.getResultMediaFile() == null ? null : generateJob.getResultMediaFile().getQuality(),
-                generateJob.getResultMediaFile() == null ? null : generateJob.getResultMediaFile().getAspectRatio(),
-                generateJob.getResultMediaFile() == null ? null : generateJob.getResultMediaFile().getResolution(),
+                resultMediaFile == null ? null : resultMediaFile.getId(),
+                resultMediaFile == null ? null : resultMediaFile.getFilePath(),
+                resultMediaFile == null ? null : resultMediaFile.getModel(),
+                resultMediaFile == null ? null : resultMediaFile.getQuality(),
+                resultMediaFile == null ? null : resultMediaFile.getAspectRatio(),
+                resultMediaFile == null ? null : resultMediaFile.getResolution(),
                 generateJob.getErrorMessage(),
                 generateJob.getSubmittedAt(),
                 generateJob.getCompletedAt(),
                 generateJob.getCreatedAt(),
                 generateJob.getUpdatedAt()
         );
+    }
+
+    private static MediaFile activeResultMediaFile(GenerateJob generateJob) {
+        MediaFile resultMediaFile = generateJob.getResultMediaFile();
+        if (resultMediaFile == null || resultMediaFile.isDeleted()) {
+            return null;
+        }
+        return resultMediaFile;
     }
 }

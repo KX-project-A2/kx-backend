@@ -16,17 +16,20 @@ import java.util.List;
 public interface MediaFileRepository extends JpaRepository<MediaFile, Long> {
 
     Optional<MediaFile> findByIdAndUserId(Long id, Long userId);
-    Page<MediaFile> findAllByUserId(Long userId, Pageable pageable);
-    Page<MediaFile> findAllByUserIdAndType(Long userId, MediaType type, Pageable pageable);
-    List<MediaFile> findAllByGenerateJob_IdOrderByIdAsc(Long generateJobId);
-    List<MediaFile> findAllByGenerateJob_IdInOrderByCreatedAtDescIdAsc(Collection<Long> generateJobIds);
-    long countByUserId(Long userId);
-    long countByUserIdAndType(Long userId, MediaType type);
+    Optional<MediaFile> findByIdAndUserIdAndDeletedFalse(Long id, Long userId);
+    Page<MediaFile> findAllByUserIdAndDeletedFalse(Long userId, Pageable pageable);
+    Page<MediaFile> findAllByUserIdAndTypeAndDeletedFalse(Long userId, MediaType type, Pageable pageable);
+    List<MediaFile> findAllByGenerateJob_IdAndDeletedFalseOrderByIdAsc(Long generateJobId);
+    List<MediaFile> findAllByGenerateJob_IdInAndDeletedFalseOrderByCreatedAtDescIdAsc(Collection<Long> generateJobIds);
+    long countByUserIdAndDeletedFalse(Long userId);
+    long countByUserIdAndTypeAndDeletedFalse(Long userId, MediaType type);
+    List<MediaFile> findAllByDeletedTrueAndDeletedAtBefore(LocalDateTime deletedAt);
 
     @Query("""
             select max(mediaFile.createdAt)
             from MediaFile mediaFile
             where mediaFile.user.id = :userId
+              and mediaFile.deleted = false
             """)
     Optional<LocalDateTime> findLatestCreatedAtByUserId(@Param("userId") Long userId);
 }
