@@ -31,6 +31,18 @@ public class MediaFile {
     @Column(name = "file_path", nullable = false, length = 1000)
     private String filePath;
 
+    @Column(length = 200)
+    private String model;
+
+    @Column(length = 50)
+    private String quality;
+
+    @Column(name = "aspect_ratio", length = 20)
+    private String aspectRatio;
+
+    @Column(length = 50)
+    private String resolution;
+
     @Column(name = "reversed_prompt", columnDefinition = "TEXT")
     private String reversedPrompt;
 

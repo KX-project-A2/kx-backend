@@ -151,6 +151,9 @@ public class GenerateService {
                 .type(Type.IMAGE_TO_VIDEO)
                 .status(Status.CREATED)
                 .inputMediaFile(primaryInputMediaFile)
+                .requestQuality(getOptionValue(options, "quality"))
+                .requestAspectRatio(getOptionValue(options, "aspect_ratio"))
+                .requestResolution(getOptionValue(options, "resolution"))
                 .build();
         generateJob.addPrompt(PromptKind.SCENE, 1, prompt);
 
@@ -409,6 +412,10 @@ public class GenerateService {
                 .user(generateJob.getUser())
                 .type(MediaType.VIDEO)
                 .filePath(videoUrl)
+                .model(generateJob.getFalModelId())
+                .quality(generateJob.getRequestQuality())
+                .aspectRatio(generateJob.getRequestAspectRatio())
+                .resolution(generateJob.getRequestResolution())
                 .tags("fal.ai")
                 .build();
         resultMediaFile.connectGeneration(generateJob, prompt);
@@ -454,5 +461,13 @@ public class GenerateService {
     private String extractString(Map<?, ?> source, String key) {
         Object value = source.get(key);
         return Objects.toString(value, null);
+    }
+
+    private String getOptionValue(Map<String, Object> options, String key) {
+        if (options == null || options.isEmpty()) {
+            return null;
+        }
+        Object value = options.get(key);
+        return value == null ? null : Objects.toString(value, null);
     }
 }
