@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  * OpenAI 이미지 생성 API
  */
 @RestController
-@RequestMapping("/api/openai/generate/images")
+@RequestMapping("/api/generate/images")
 @RequiredArgsConstructor
 public class OpenAiGenerateImageController {
 
