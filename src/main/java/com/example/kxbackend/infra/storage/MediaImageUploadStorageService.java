@@ -2,13 +2,11 @@ package com.example.kxbackend.infra.storage;
 
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
-import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -17,6 +15,7 @@ import java.util.UUID;
  * 이미지 업로드 파일 저장소
  */
 @Service
+@RequiredArgsConstructor
 public class MediaImageUploadStorageService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
@@ -33,11 +32,11 @@ public class MediaImageUploadStorageService {
             "image/gif", "gif"
     );
 
-    @Value("${storage.local.base-path:./storage}")
-    private String basePath;
+    private final ObjectStorage objectStorage;
 
     /**
-     * 업로드 이미지를 저장하고 상대 경로를 반환한다.
+     * 업로드 이미지를 저장하고 object key를 반환한다.
+     * 예: uploads/{userId}/{uuid}.jpg
      */
     public String upload(Long userId, MultipartFile file) {
         validateImageFile(file);
@@ -45,13 +44,11 @@ public class MediaImageUploadStorageService {
         try {
             String extension = resolveExtension(file);
             String fileName = UUID.randomUUID() + "." + extension;
-            Path directory = Path.of(basePath, "uploads", String.valueOf(userId));
-            Files.createDirectories(directory);
+            String objectKey = ObjectStorageKeys.uploadImageKey(userId, fileName);
+            String contentType = file.getContentType();
 
-            Path filePath = directory.resolve(fileName);
-            file.transferTo(filePath.toFile());
-
-            return Path.of("uploads", String.valueOf(userId), fileName).toString();
+            objectStorage.put(objectKey, file.getBytes(), contentType);
+            return objectKey;
         } catch (IOException exception) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "이미지 파일 업로드에 실패했습니다.");
         }
