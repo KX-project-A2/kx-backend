@@ -1,5 +1,7 @@
-package com.example.kxbackend.infra.storage;
+package com.example.kxbackend.infra.storage.local;
 
+import com.example.kxbackend.infra.storage.ObjectStorage;
+import com.example.kxbackend.infra.storage.ObjectStorageKeys;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
 

@@ -22,7 +22,7 @@ import com.example.kxbackend.global.exception.ErrorCode;
 import com.example.kxbackend.infra.ai.openai.OpenAiBatchClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient.OpenAiBatchStatusResponse;
-import com.example.kxbackend.infra.storage.OpenAiGeneratedImageStorageService;
+import com.example.kxbackend.infra.storage.service.OpenAiGeneratedImageStorageService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;

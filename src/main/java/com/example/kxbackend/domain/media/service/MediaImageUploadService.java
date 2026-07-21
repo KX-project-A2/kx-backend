@@ -8,7 +8,7 @@ import com.example.kxbackend.domain.user.entity.User;
 import com.example.kxbackend.domain.user.repository.UserRepository;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
-import com.example.kxbackend.infra.storage.MediaImageUploadStorageService;
+import com.example.kxbackend.infra.storage.service.MediaImageUploadStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

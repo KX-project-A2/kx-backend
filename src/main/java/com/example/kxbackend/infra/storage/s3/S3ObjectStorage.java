@@ -1,7 +1,9 @@
-package com.example.kxbackend.infra.storage;
+package com.example.kxbackend.infra.storage.s3;
 
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
+import com.example.kxbackend.infra.storage.ObjectStorage;
+import com.example.kxbackend.infra.storage.ObjectStorageKeys;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
