@@ -217,7 +217,7 @@ public class OpenAiGenerateImageService {
     }
 
     private OpenAiGenerateImageJobResponseDto buildResponse(GenerateJob imageJob, OpenAiImageGenerateJobOption jobOption) {
-        List<MediaFile> resultMediaFiles = mediaFileRepository.findAllByGenerateJob_IdOrderByIdAsc(imageJob.getId());
+        List<MediaFile> resultMediaFiles = mediaFileRepository.findAllByGenerateJob_IdAndDeletedFalseOrderByIdAsc(imageJob.getId());
         return OpenAiGenerateImageJobResponseDto.from(imageJob, jobOption, resultMediaFiles);
     }
 

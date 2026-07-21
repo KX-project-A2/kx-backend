@@ -1,6 +1,5 @@
 package com.example.kxbackend.domain.generate.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -17,7 +16,6 @@ public record ImageToVideoGenerateRequestDto(
 
         String modelId,
 
-        @NotBlank(message = "프롬프트는 필수입니다.")
         String prompt,
 
         String webhookUrl,

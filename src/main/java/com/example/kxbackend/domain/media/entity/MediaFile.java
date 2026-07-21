@@ -31,6 +31,18 @@ public class MediaFile {
     @Column(name = "file_path", nullable = false, length = 1000)
     private String filePath;
 
+    @Column(length = 200)
+    private String model;
+
+    @Column(length = 50)
+    private String quality;
+
+    @Column(name = "aspect_ratio", length = 20)
+    private String aspectRatio;
+
+    @Column(length = 50)
+    private String resolution;
+
     @Column(name = "reversed_prompt", columnDefinition = "TEXT")
     private String reversedPrompt;
 
@@ -48,6 +60,13 @@ public class MediaFile {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean deleted = false;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     public void connectGeneration(GenerateJob generateJob, GeneratePrompt generatePrompt) {
         this.generateJob = generateJob;
         this.generatePrompt = generatePrompt;
@@ -55,6 +74,14 @@ public class MediaFile {
 
     public void updateReversedPrompt(String reversedPrompt) {
         this.reversedPrompt = reversedPrompt;
+    }
+
+    public void softDelete() {
+        if (this.deleted) {
+            return;
+        }
+        this.deleted = true;
+        this.deletedAt = LocalDateTime.now();
     }
 
     @PrePersist

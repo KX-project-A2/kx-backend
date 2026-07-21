@@ -47,6 +47,15 @@ public class GenerateJob {
     @Column(name = "fal_response_url", length = 1000)
     private String falResponseUrl;
 
+    @Column(name = "request_quality", length = 50)
+    private String requestQuality;
+
+    @Column(name = "request_aspect_ratio", length = 20)
+    private String requestAspectRatio;
+
+    @Column(name = "request_resolution", length = 50)
+    private String requestResolution;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "input_media_file_id")
     private MediaFile inputMediaFile;

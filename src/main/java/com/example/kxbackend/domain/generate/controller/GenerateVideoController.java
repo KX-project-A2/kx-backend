@@ -5,7 +5,7 @@ import com.example.kxbackend.domain.generate.dto.request.ImageToVideoGenerateReq
 import com.example.kxbackend.domain.generate.dto.response.GenerateJobResponseDto;
 import com.example.kxbackend.domain.generate.dto.response.GenerateJobStatusResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
-import com.example.kxbackend.domain.generate.service.GenerateService;
+import com.example.kxbackend.domain.generate.service.GenerateVideoService;
 import com.example.kxbackend.domain.user.entity.User;
 import com.example.kxbackend.domain.user.repository.UserRepository;
 import com.example.kxbackend.global.exception.BusinessException;
@@ -27,9 +27,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/generate")
 @RequiredArgsConstructor
-public class GenerateController {
+public class GenerateVideoController {
 
-    private final GenerateService generateService;
+    private final GenerateVideoService generateVideoService;
     private final UserRepository userRepository;
 
     /**
@@ -44,7 +44,7 @@ public class GenerateController {
         User user = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
-        GenerateJob generateJob = generateService.createImageToVideoJob(user, request);
+        GenerateJob generateJob = generateVideoService.createImageToVideoJob(user, request);
         return ApiResponse.success("영상 생성 작업이 요청되었습니다.", GenerateJobResponseDto.from(generateJob));
     }
 
@@ -59,7 +59,7 @@ public class GenerateController {
         User user = userRepository.findById(userPrincipal.getId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
-        GenerateJobStatusResponseDto response = generateService.getImageToVideoJobStatus(user, jobId);
+        GenerateJobStatusResponseDto response = generateVideoService.getImageToVideoJobStatus(user, jobId);
         return ApiResponse.success(response);
     }
 
@@ -68,7 +68,7 @@ public class GenerateController {
      */
     @PostMapping("/webhooks/fal")
     public ApiResponse<GenerateJobResponseDto> handleFalWebhook(@RequestBody FalWebhookRequestDto request) {
-        GenerateJob generateJob = generateService.handleFalWebhook(request);
+        GenerateJob generateJob = generateVideoService.handleFalWebhook(request);
         return ApiResponse.success("fal.ai webhook이 처리되었습니다.", GenerateJobResponseDto.from(generateJob));
     }
 }

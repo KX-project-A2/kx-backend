@@ -126,9 +126,6 @@ public class FalVideoGenerationClient implements VideoGenerationClient {
 
     private String queueEndpointPath(String modelId) {
         String normalizedModelId = modelId.replaceAll("^/+", "").replaceAll("/+$", "");
-        if (normalizedModelId.startsWith("fal-ai/kling-video/")) {
-            return "/fal-ai/kling-video";
-        }
         return "/" + normalizedModelId;
     }
 
