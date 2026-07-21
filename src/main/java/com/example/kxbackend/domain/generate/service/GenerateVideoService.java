@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class GenerateService {
+public class GenerateVideoService {
 
     private static final int KLING_MAX_REFERENCE_IMAGE_COUNT = 4;
     private static final int SEEDANCE_MAX_REFERENCE_IMAGE_COUNT = 9;
