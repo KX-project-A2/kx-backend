@@ -48,8 +48,37 @@ public class OpenAiImageBatchResultClient {
         String outputFileId = statusMap.get("output_file_id") != null
                 ? String.valueOf(statusMap.get("output_file_id"))
                 : null;
+        String errorFileId = statusMap.get("error_file_id") != null
+                ? String.valueOf(statusMap.get("error_file_id"))
+                : null;
 
-        return new OpenAiBatchStatusResponse(status, outputFileId);
+        return new OpenAiBatchStatusResponse(status, outputFileId, errorFileId);
+    }
+
+    /**
+     * 배치 에러 파일(JSONL)에서 첫 번째 오류 메시지를 추출한다.
+     */
+    public String extractErrorMessage(String errorFileId) {
+        try {
+            String jsonlContent = downloadFileContent(errorFileId);
+            String firstLine = jsonlContent.lines()
+                    .filter(line -> !line.isBlank())
+                    .findFirst()
+                    .orElse(null);
+            if (firstLine == null) {
+                return null;
+            }
+
+            JsonNode root = objectMapper.readTree(firstLine);
+            JsonNode messageNode = root.path("error").path("message");
+            if (messageNode.isTextual() && !messageNode.asText().isBlank()) {
+                return messageNode.asText();
+            }
+            messageNode = root.path("response").path("body").path("error").path("message");
+            return messageNode.isTextual() && !messageNode.asText().isBlank() ? messageNode.asText() : null;
+        } catch (Exception exception) {
+            return null;
+        }
     }
 
     /**
@@ -141,6 +170,6 @@ public class OpenAiImageBatchResultClient {
         }
     }
 
-    public record OpenAiBatchStatusResponse(String status, String outputFileId) {
+    public record OpenAiBatchStatusResponse(String status, String outputFileId, String errorFileId) {
     }
 }

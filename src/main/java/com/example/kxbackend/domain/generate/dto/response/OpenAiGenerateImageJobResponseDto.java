@@ -1,7 +1,9 @@
 package com.example.kxbackend.domain.generate.dto.response;
 
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
+import com.example.kxbackend.domain.generate.entity.OpenAiImageReference;
 import com.example.kxbackend.domain.generate.entity.OpenAiImageGenerateJobOption;
+import com.example.kxbackend.domain.generate.entity.enums.ImageGenerationPurpose;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
 import com.example.kxbackend.domain.generate.entity.enums.Type;
 import com.example.kxbackend.domain.media.entity.MediaFile;
@@ -21,9 +23,11 @@ public record OpenAiGenerateImageJobResponseDto(
         Integer imageCount,
         String size,
         String quality,
+        ImageGenerationPurpose purpose,
         Long resultMediaFileId,
         String resultFilePath,
         List<OpenAiGeneratedImageResultDto> resultImages,
+        List<OpenAiReferenceImageResultDto> referenceImages,
         String errorMessage,
         LocalDateTime createdAt,
         LocalDateTime submittedAt,
@@ -33,11 +37,15 @@ public record OpenAiGenerateImageJobResponseDto(
     public static OpenAiGenerateImageJobResponseDto from(
             GenerateJob job,
             OpenAiImageGenerateJobOption option,
-            List<MediaFile> resultMediaFiles
+            List<MediaFile> resultMediaFiles,
+            List<OpenAiImageReference> references
     ) {
         String prompt = job.getPrompts().isEmpty() ? null : job.getPrompts().getFirst().getContent();
         List<OpenAiGeneratedImageResultDto> resultImages = resultMediaFiles.stream()
                 .map(mediaFile -> new OpenAiGeneratedImageResultDto(mediaFile.getId(), mediaFile.getFilePath()))
+                .toList();
+        List<OpenAiReferenceImageResultDto> referenceImages = references.stream()
+                .map(OpenAiReferenceImageResultDto::from)
                 .toList();
 
         Long resultMediaFileId = resultImages.isEmpty() ? null : resultImages.getFirst().mediaFileId();
@@ -52,9 +60,11 @@ public record OpenAiGenerateImageJobResponseDto(
                 option != null ? option.getImageCount() : null,
                 option != null ? option.getSize() : null,
                 option != null ? option.getQuality() : null,
+                option != null ? option.getPurpose() : ImageGenerationPurpose.CHARACTER,
                 resultMediaFileId,
                 resultFilePath,
                 resultImages,
+                referenceImages,
                 job.getErrorMessage(),
                 job.getCreatedAt(),
                 job.getSubmittedAt(),
