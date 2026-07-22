@@ -76,6 +76,11 @@ public class MediaFile {
         this.reversedPrompt = reversedPrompt;
     }
 
+    public void updateReversePromptResult(String reversedPrompt, String aspectRatio) {
+        this.reversedPrompt = reversedPrompt;
+        this.aspectRatio = aspectRatio;
+    }
+
     public void softDelete() {
         if (this.deleted) {
             return;
