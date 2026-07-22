@@ -24,6 +24,17 @@ public class S3PresignedUrlService {
     private final StorageProperties storageProperties;
 
     public PresignedUrl createDownloadUrl(String objectKey, String fileName) {
+        return createPresignedGetUrl(
+                objectKey,
+                buildAttachmentContentDisposition(resolveFileName(fileName, objectKey))
+        );
+    }
+
+    public PresignedUrl createReadUrl(String objectKey) {
+        return createPresignedGetUrl(objectKey, null);
+    }
+
+    private PresignedUrl createPresignedGetUrl(String objectKey, String contentDisposition) {
         S3Presigner s3Presigner = getS3Presigner();
         StorageProperties.S3 s3 = storageProperties.getS3();
         String bucket = s3.getBucket();
@@ -35,12 +46,15 @@ public class S3PresignedUrlService {
         String key = ObjectStorageKeys.normalize(objectKey);
         // 설정값이 비정상이면 기본 만료 시간으로 보정
         long expiresInSeconds = resolveExpirationSeconds(s3.getPresignedUrlExpirationSeconds());
-        // S3 GET 요청에 다운로드 파일명과 attachment 응답 헤더 설정
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+        // S3 GET 요청에 버킷과 object key 설정
+        GetObjectRequest.Builder getObjectRequestBuilder = GetObjectRequest.builder()
                 .bucket(bucket)
-                .key(key)
-                .responseContentDisposition(buildAttachmentContentDisposition(resolveFileName(fileName, key)))
-                .build();
+                .key(key);
+        if (StringUtils.hasText(contentDisposition)) {
+            // 다운로드용 URL에는 attachment 응답 헤더 설정
+            getObjectRequestBuilder.responseContentDisposition(contentDisposition);
+        }
+        GetObjectRequest getObjectRequest = getObjectRequestBuilder.build();
 
         // presigned URL 서명 유효 시간 설정 후 생성
         GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()

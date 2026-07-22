@@ -14,6 +14,8 @@ import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+import java.io.InputStream;
+
 /**
  * AWS S3 기반 객체 저장소
  */
@@ -40,6 +42,38 @@ public class S3ObjectStorage implements ObjectStorage {
             }
 
             s3Client.putObject(requestBuilder.build(), RequestBody.fromBytes(content));
+        } catch (S3Exception exception) {
+            String awsErrorCode = exception.awsErrorDetails() != null
+                    ? exception.awsErrorDetails().errorCode()
+                    : "UNKNOWN";
+            log.error("S3 putObject 실패. bucket={}, key={}, statusCode={}, awsErrorCode={}, message={}",
+                    bucket, key, exception.statusCode(), awsErrorCode, exception.getMessage());
+            throw new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "S3 파일 저장에 실패했습니다. (" + awsErrorCode + ")"
+            );
+        } catch (SdkClientException exception) {
+            log.error("S3 putObject 클라이언트 오류. bucket={}, key={}, message={}",
+                    bucket, key, exception.getMessage());
+            throw new BusinessException(
+                    ErrorCode.INTERNAL_SERVER_ERROR,
+                    "S3 연결/인증에 실패했습니다. 자격 증명·리전·버킷을 확인하세요."
+            );
+        }
+    }
+
+    @Override
+    public void put(String objectKey, InputStream content, long contentLength, String contentType) {
+        String key = ObjectStorageKeys.normalize(objectKey);
+        try {
+            PutObjectRequest.Builder requestBuilder = PutObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key);
+            if (contentType != null && !contentType.isBlank()) {
+                requestBuilder.contentType(contentType);
+            }
+
+            s3Client.putObject(requestBuilder.build(), RequestBody.fromInputStream(content, contentLength));
         } catch (S3Exception exception) {
             String awsErrorCode = exception.awsErrorDetails() != null
                     ? exception.awsErrorDetails().errorCode()
