@@ -282,7 +282,7 @@ public class OpenAiGenerateImageService {
             savedMediaFiles.add(mediaFileRepository.save(mediaFile));
         }
 
-        imageJob.completeJob(savedMediaFiles.getFirst());
+        imageJob.completeJob();
         deleteOpenAiReferenceFiles(imageJob);
         log.info("OpenAI 이미지 생성 완료. jobId={}, imageCount={}", imageJob.getId(), savedMediaFiles.size());
     }

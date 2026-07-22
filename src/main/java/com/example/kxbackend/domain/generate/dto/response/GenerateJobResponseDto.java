@@ -24,8 +24,12 @@ public record GenerateJobResponseDto(
 ) {
 
     public static GenerateJobResponseDto from(GenerateJob generateJob) {
+        return from(generateJob, null);
+    }
+
+    public static GenerateJobResponseDto from(GenerateJob generateJob, MediaFile resultMediaFile) {
         MediaFile inputMediaFile = activeMediaFile(generateJob.getInputMediaFile());
-        MediaFile resultMediaFile = activeMediaFile(generateJob.getResultMediaFile());
+        MediaFile activeResultMediaFile = activeMediaFile(resultMediaFile);
         return new GenerateJobResponseDto(
                 generateJob.getId(),
                 generateJob.getType(),
@@ -35,7 +39,7 @@ public record GenerateJobResponseDto(
                 generateJob.getFalStatusUrl(),
                 generateJob.getFalResponseUrl(),
                 inputMediaFile == null ? null : inputMediaFile.getId(),
-                resultMediaFile == null ? null : resultMediaFile.getId(),
+                activeResultMediaFile == null ? null : activeResultMediaFile.getId(),
                 generateJob.getSubmittedAt(),
                 generateJob.getCompletedAt(),
                 generateJob.getCreatedAt(),

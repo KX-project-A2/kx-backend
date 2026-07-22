@@ -7,6 +7,7 @@ import com.example.kxbackend.domain.generate.client.dto.VideoGenerationStatusRes
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationSubmitResult;
 import com.example.kxbackend.domain.generate.dto.request.FalWebhookRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.ImageToVideoGenerateRequestDto;
+import com.example.kxbackend.domain.generate.dto.response.GenerateJobResponseDto;
 import com.example.kxbackend.domain.generate.dto.response.GenerateJobStatusResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
@@ -120,7 +121,12 @@ public class GenerateVideoService {
         }
 
         VideoGenerationStatusResult falStatus = getFalStatus(generateJob);
-        return GenerateJobStatusResponseDto.from(generateJob, falStatus);
+        MediaFile resultMediaFile = findRepresentativeResultMediaFile(generateJob.getId());
+        return GenerateJobStatusResponseDto.from(generateJob, falStatus, resultMediaFile);
+    }
+
+    public GenerateJobResponseDto toGenerateJobResponse(GenerateJob generateJob) {
+        return GenerateJobResponseDto.from(generateJob, findRepresentativeResultMediaFile(generateJob.getId()));
     }
 
     /**
@@ -408,8 +414,14 @@ public class GenerateVideoService {
                 .build();
         resultMediaFile.connectGeneration(generateJob, prompt);
 
-        MediaFile savedMediaFile = mediaFileRepository.save(resultMediaFile);
-        generateJob.completeJob(savedMediaFile);
+        mediaFileRepository.save(resultMediaFile);
+        generateJob.completeJob();
+    }
+
+    private MediaFile findRepresentativeResultMediaFile(Long generateJobId) {
+        List<MediaFile> resultMediaFiles =
+                mediaFileRepository.findAllByGenerateJob_IdAndDeletedFalseOrderByIdAsc(generateJobId);
+        return resultMediaFiles.isEmpty() ? null : resultMediaFiles.getFirst();
     }
 
     private String extractVideoUrl(Map<String, Object> payload) {

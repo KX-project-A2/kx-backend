@@ -60,10 +60,6 @@ public class GenerateJob {
     @JoinColumn(name = "input_media_file_id")
     private MediaFile inputMediaFile;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "result_media_file_id")
-    private MediaFile resultMediaFile;
-
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 
@@ -163,11 +159,10 @@ public class GenerateJob {
     }
 
     /**
-     * 생성 작업 성공 시 결과 미디어 파일과 매핑
+     * 생성 작업 성공 상태를 기록
      */
-    public void completeJob(MediaFile mediaFile) {
+    public void completeJob() {
         this.status = Status.COMPLETED;
-        this.resultMediaFile = mediaFile;
         this.completedAt = LocalDateTime.now();
     }
 
