@@ -1,11 +1,15 @@
-package com.example.kxbackend.infra.storage;
+package com.example.kxbackend.infra.storage.local;
 
+import com.example.kxbackend.infra.storage.ObjectStorage;
+import com.example.kxbackend.infra.storage.ObjectStorageKeys;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 
 /**
  * 로컬 디스크 기반 객체 저장소
@@ -24,6 +28,17 @@ public class LocalObjectStorage implements ObjectStorage {
         try {
             Files.createDirectories(absolutePath.getParent());
             Files.write(absolutePath, content);
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 저장에 실패했습니다.");
+        }
+    }
+
+    @Override
+    public void put(String objectKey, InputStream content, long contentLength, String contentType) {
+        Path absolutePath = resolveAbsolutePath(objectKey);
+        try {
+            Files.createDirectories(absolutePath.getParent());
+            Files.copy(content, absolutePath, StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException exception) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 저장에 실패했습니다.");
         }
@@ -52,6 +67,16 @@ public class LocalObjectStorage implements ObjectStorage {
     public boolean exists(String objectKey) {
         Path absolutePath = resolveAbsolutePath(objectKey);
         return Files.exists(absolutePath) && Files.isRegularFile(absolutePath);
+    }
+
+    @Override
+    public void delete(String objectKey) {
+        Path absolutePath = resolveAbsolutePath(objectKey);
+        try {
+            Files.deleteIfExists(absolutePath);
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 삭제에 실패했습니다.");
+        }
     }
 
     private Path resolveAbsolutePath(String objectKey) {

@@ -32,8 +32,12 @@ public record GenerateJobStatusResponseDto(
         LocalDateTime updatedAt
 ) {
 
-    public static GenerateJobStatusResponseDto from(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
-        MediaFile resultMediaFile = activeResultMediaFile(generateJob);
+    public static GenerateJobStatusResponseDto from(
+            GenerateJob generateJob,
+            VideoGenerationStatusResult falStatus,
+            MediaFile resultMediaFile
+    ) {
+        MediaFile activeResultMediaFile = activeMediaFile(resultMediaFile);
         return new GenerateJobStatusResponseDto(
                 generateJob.getId(),
                 generateJob.getStatus(),
@@ -43,12 +47,12 @@ public record GenerateJobStatusResponseDto(
                 falStatus == null ? null : falStatus.responseUrl(),
                 falStatus == null ? List.of() : falStatus.logs(),
                 falStatus == null ? null : falStatus.metrics(),
-                resultMediaFile == null ? null : resultMediaFile.getId(),
-                resultMediaFile == null ? null : resultMediaFile.getFilePath(),
-                resultMediaFile == null ? null : resultMediaFile.getModel(),
-                resultMediaFile == null ? null : resultMediaFile.getQuality(),
-                resultMediaFile == null ? null : resultMediaFile.getAspectRatio(),
-                resultMediaFile == null ? null : resultMediaFile.getResolution(),
+                activeResultMediaFile == null ? null : activeResultMediaFile.getId(),
+                activeResultMediaFile == null ? null : activeResultMediaFile.getFilePath(),
+                activeResultMediaFile == null ? null : activeResultMediaFile.getModel(),
+                activeResultMediaFile == null ? null : activeResultMediaFile.getQuality(),
+                activeResultMediaFile == null ? null : activeResultMediaFile.getAspectRatio(),
+                activeResultMediaFile == null ? null : activeResultMediaFile.getResolution(),
                 generateJob.getErrorMessage(),
                 generateJob.getSubmittedAt(),
                 generateJob.getCompletedAt(),
@@ -57,11 +61,10 @@ public record GenerateJobStatusResponseDto(
         );
     }
 
-    private static MediaFile activeResultMediaFile(GenerateJob generateJob) {
-        MediaFile resultMediaFile = generateJob.getResultMediaFile();
-        if (resultMediaFile == null || resultMediaFile.isDeleted()) {
+    private static MediaFile activeMediaFile(MediaFile mediaFile) {
+        if (mediaFile == null || mediaFile.isDeleted()) {
             return null;
         }
-        return resultMediaFile;
+        return mediaFile;
     }
 }

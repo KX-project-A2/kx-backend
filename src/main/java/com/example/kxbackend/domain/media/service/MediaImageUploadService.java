@@ -8,7 +8,7 @@ import com.example.kxbackend.domain.user.entity.User;
 import com.example.kxbackend.domain.user.repository.UserRepository;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
-import com.example.kxbackend.infra.storage.MediaImageUploadStorageService;
+import com.example.kxbackend.infra.storage.service.ImageUploadStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,7 +24,7 @@ public class MediaImageUploadService {
 
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
-    private final MediaImageUploadStorageService mediaImageUploadStorageService;
+    private final ImageUploadStorageService imageUploadStorageService;
 
     /**
      * 이미지 파일을 업로드한다.
@@ -32,7 +32,7 @@ public class MediaImageUploadService {
     @Transactional
     public MediaImageUploadResponseDto uploadImage(Long userId, MultipartFile file, String tags) {
         User user = getUser(userId);
-        String savedPath = mediaImageUploadStorageService.upload(userId, file);
+        String savedPath = imageUploadStorageService.uploadMediaImage(userId, file);
 
         MediaFile mediaFile = MediaFile.builder()
                 .user(user)

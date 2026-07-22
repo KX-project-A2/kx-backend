@@ -4,6 +4,8 @@ package com.example.kxbackend.infra.storage;
  * 저장소 object key 규칙
  * - uploads/{userId}/{uuid}.{ext}
  * - openai-images/{userId}/{uuid}.png
+ * - videos/{userId}/{uuid}.mp4
+ * - profile-images/{userId}/{uuid}.{ext}
  */
 public final class ObjectStorageKeys {
 
@@ -16,6 +18,14 @@ public final class ObjectStorageKeys {
 
     public static String generatedImageKey(Long userId, String fileName) {
         return join("openai-images", String.valueOf(userId), fileName);
+    }
+
+    public static String generatedVideoKey(Long userId, String fileName) {
+        return join("videos", String.valueOf(userId), fileName);
+    }
+
+    public static String profileImageKey(Long userId, String fileName) {
+        return join("profile-images", String.valueOf(userId), fileName);
     }
 
     /**

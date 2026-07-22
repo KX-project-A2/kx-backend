@@ -45,7 +45,7 @@ public class GenerateVideoController {
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
         GenerateJob generateJob = generateVideoService.createImageToVideoJob(user, request);
-        return ApiResponse.success("영상 생성 작업이 요청되었습니다.", GenerateJobResponseDto.from(generateJob));
+        return ApiResponse.success("영상 생성 작업이 요청되었습니다.", generateVideoService.toGenerateJobResponse(generateJob));
     }
 
     /**
@@ -69,6 +69,6 @@ public class GenerateVideoController {
     @PostMapping("/webhooks/fal")
     public ApiResponse<GenerateJobResponseDto> handleFalWebhook(@RequestBody FalWebhookRequestDto request) {
         GenerateJob generateJob = generateVideoService.handleFalWebhook(request);
-        return ApiResponse.success("fal.ai webhook이 처리되었습니다.", GenerateJobResponseDto.from(generateJob));
+        return ApiResponse.success("fal.ai webhook이 처리되었습니다.", generateVideoService.toGenerateJobResponse(generateJob));
     }
 }

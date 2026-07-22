@@ -1,5 +1,6 @@
-package com.example.kxbackend.infra.storage;
+package com.example.kxbackend.infra.storage.service;
 
+import com.example.kxbackend.infra.storage.ObjectStorage;
 import com.example.kxbackend.infra.storage.ObjectStorage.StoredObject;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
