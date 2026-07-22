@@ -61,12 +61,12 @@ public record CharacterConceptSheetRequestDto(
          * Auto는 null 또는 "auto"로 전달하면 설정표 기본값(1536x1024)을 사용한다.
          */
         @Pattern(
-                regexp = "^(auto|1024x1024|1024x1536|1536x1024|1792x1024|1024x1792|2048x2048)$",
+                regexp = "^(auto|1024x1024|1536x1024|1024x1536)$",
                 message = "지원하지 않는 이미지 크기입니다."
         )
         String size,
 
-        @Pattern(regexp = "^(low|medium|high)$", message = "quality는 low, medium, high 중 하나여야 합니다.")
+        @Pattern(regexp = "^(standard|high)$", message = "quality는 standard, high 중 하나여야 합니다.")
         String quality
 ) {
 }

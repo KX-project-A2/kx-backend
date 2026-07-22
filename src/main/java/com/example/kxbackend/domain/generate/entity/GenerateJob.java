@@ -141,6 +141,14 @@ public class GenerateJob {
     }
 
     /**
+     * 외부 동기 API 요청 시작 상태를 기록한다.
+     */
+    public void startSynchronous() {
+        this.status = Status.IN_PROGRESS;
+        this.submittedAt = LocalDateTime.now();
+    }
+
+    /**
      * 외부 생성 작업 진행 상태로 변경
      */
     public void progress() {
