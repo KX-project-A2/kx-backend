@@ -44,7 +44,6 @@ public class SecurityConfig {
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/api/generate/webhooks/fal",
-                                "/api/share/**",
                                 "/error"
                         ).permitAll()
                         .anyRequest().authenticated()
