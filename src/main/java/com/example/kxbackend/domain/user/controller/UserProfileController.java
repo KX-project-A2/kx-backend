@@ -53,9 +53,9 @@ public class UserProfileController {
     }
 
     @DeleteMapping("/profile-image")
-    public ApiResponse<ProfileResponseDto> deleteProfileImage(@AuthenticationPrincipal UserPrincipal principal) {
-        ProfileResponseDto response = userProfileService.deleteProfileImage(principal.getId());
-        return ApiResponse.success("프로필 이미지가 삭제되었습니다.", response);
+    public ApiResponse<Void> deleteProfileImage(@AuthenticationPrincipal UserPrincipal principal) {
+        userProfileService.deleteProfileImage(principal.getId());
+        return ApiResponse.success("프로필 이미지가 삭제되었습니다.");
     }
 
     @GetMapping("/generation-summary")

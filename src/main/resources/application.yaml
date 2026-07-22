@@ -70,7 +70,14 @@ storage:
     region: ${AWS_S3_REGION:ap-northeast-2}
     access-key: ${AWS_ACCESS_KEY_ID:}
     secret-key: ${AWS_SECRET_ACCESS_KEY:}
-    presigned-url-expiration-seconds: ${AWS_S3_PRESIGNED_URL_EXPIRATION_SECONDS:300}
+    presigned-url-expiration-seconds: ${AWS_S3_PRESIGNED_URL_EXPIRATION_SECONDS:1800}
+
+share:
+  link:
+    expiration-days: ${SHARE_LINK_EXPIRATION_DAYS:7}
+    token-byte-length: ${SHARE_LINK_TOKEN_BYTE_LENGTH:32}
+    max-token-generation-attempts: ${SHARE_LINK_MAX_TOKEN_GENERATION_ATTEMPTS:5}
+    cleanup-cron: ${SHARE_LINK_CLEANUP_CRON:0 30 3 * * *}
 
 ai:
   fal:
