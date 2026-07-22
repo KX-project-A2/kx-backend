@@ -49,16 +49,15 @@ public class UserProfileService {
     }
 
     @Transactional
-    public ProfileResponseDto deleteProfileImage(Long userId) {
+    public void deleteProfileImage(Long userId) {
         User user = getUser(userId);
         String profileImagePath = user.getProfileImagePath();
         if (!StringUtils.hasText(profileImagePath)) {
-            return toProfileResponse(user);
+            return;
         }
 
         imageUploadStorageService.delete(profileImagePath);
         user.deleteProfileImage();
-        return toProfileResponse(user);
     }
 
     private User getUser(Long userId) {

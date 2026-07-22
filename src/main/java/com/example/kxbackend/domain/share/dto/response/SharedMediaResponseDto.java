@@ -8,14 +8,25 @@ import java.time.LocalDateTime;
 public record SharedMediaResponseDto(
         String token,
         LocalDateTime expiresAt,
-        MediaFileResponseDto mediaFile
+        MediaFileResponseDto mediaFile,
+        String mediaUrl,
+        String downloadUrl,
+        Long urlExpiresInSeconds
 ) {
 
-    public static SharedMediaResponseDto from(ShareLink shareLink) {
+    public static SharedMediaResponseDto from(
+            ShareLink shareLink,
+            String mediaUrl,
+            String downloadUrl,
+            Long urlExpiresInSeconds
+    ) {
         return new SharedMediaResponseDto(
                 shareLink.getToken(),
                 shareLink.getExpiresAt(),
-                MediaFileResponseDto.from(shareLink.getMediaFile())
+                MediaFileResponseDto.from(shareLink.getMediaFile()),
+                mediaUrl,
+                downloadUrl,
+                urlExpiresInSeconds
         );
     }
 }

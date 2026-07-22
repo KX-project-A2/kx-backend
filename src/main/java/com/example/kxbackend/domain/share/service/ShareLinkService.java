@@ -2,15 +2,20 @@ package com.example.kxbackend.domain.share.service;
 
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.media.repository.MediaFileRepository;
+import com.example.kxbackend.domain.share.config.ShareLinkProperties;
 import com.example.kxbackend.domain.share.dto.response.ShareLinkResponseDto;
 import com.example.kxbackend.domain.share.dto.response.SharedMediaResponseDto;
 import com.example.kxbackend.domain.share.entity.ShareLink;
 import com.example.kxbackend.domain.share.repository.ShareLinkRepository;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
+import com.example.kxbackend.infra.storage.ObjectStorageKeys;
+import com.example.kxbackend.infra.storage.s3.S3PresignedUrlService;
+import com.example.kxbackend.infra.storage.s3.S3PresignedUrlService.PresignedUrl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
@@ -21,12 +26,10 @@ import java.util.Base64;
 @Transactional(readOnly = true)
 public class ShareLinkService {
 
-    private static final int TOKEN_BYTE_LENGTH = 32;
-    private static final int DEFAULT_EXPIRATION_DAYS = 7;
-    private static final int MAX_TOKEN_GENERATION_ATTEMPTS = 5;
-
     private final MediaFileRepository mediaFileRepository;
     private final ShareLinkRepository shareLinkRepository;
+    private final ShareLinkProperties shareLinkProperties;
+    private final S3PresignedUrlService s3PresignedUrlService;
     private final SecureRandom secureRandom = new SecureRandom();
 
     @Transactional
@@ -37,7 +40,7 @@ public class ShareLinkService {
         ShareLink shareLink = ShareLink.builder()
                 .mediaFile(mediaFile)
                 .token(generateUniqueToken())
-                .expiresAt(LocalDateTime.now().plusDays(DEFAULT_EXPIRATION_DAYS))
+                .expiresAt(LocalDateTime.now().plusDays(shareLinkProperties.getExpirationDays()))
                 .build();
 
         return ShareLinkResponseDto.from(shareLinkRepository.save(shareLink));
@@ -51,7 +54,7 @@ public class ShareLinkService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "만료되었거나 사용할 수 없는 공유 링크입니다.");
         }
 
-        return SharedMediaResponseDto.from(shareLink);
+        return createSharedMediaResponse(shareLink);
     }
 
     @Transactional
@@ -64,7 +67,7 @@ public class ShareLinkService {
     }
 
     private String generateUniqueToken() {
-        for (int attempt = 0; attempt < MAX_TOKEN_GENERATION_ATTEMPTS; attempt++) {
+        for (int attempt = 0; attempt < shareLinkProperties.getMaxTokenGenerationAttempts(); attempt++) {
             String token = generateToken();
             if (!shareLinkRepository.existsByToken(token)) {
                 return token;
@@ -74,8 +77,38 @@ public class ShareLinkService {
     }
 
     private String generateToken() {
-        byte[] bytes = new byte[TOKEN_BYTE_LENGTH];
+        byte[] bytes = new byte[shareLinkProperties.getTokenByteLength()];
         secureRandom.nextBytes(bytes);
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private SharedMediaResponseDto createSharedMediaResponse(ShareLink shareLink) {
+        MediaFile mediaFile = shareLink.getMediaFile();
+        String filePath = mediaFile.getFilePath();
+        if (!StringUtils.hasText(filePath)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "미디어 파일 경로가 비어 있습니다.");
+        }
+        if (isExternalUrl(filePath)) {
+            return SharedMediaResponseDto.from(shareLink, filePath, filePath, null);
+        }
+
+        String objectKey = ObjectStorageKeys.normalize(filePath);
+        PresignedUrl readUrl = s3PresignedUrlService.createReadUrl(objectKey);
+        PresignedUrl downloadUrl = s3PresignedUrlService.createDownloadUrl(
+                objectKey,
+                ObjectStorageKeys.fileNameOf(objectKey)
+        );
+
+        return SharedMediaResponseDto.from(
+                shareLink,
+                readUrl.url(),
+                downloadUrl.url(),
+                downloadUrl.expiresInSeconds()
+        );
+    }
+
+    private boolean isExternalUrl(String filePath) {
+        return StringUtils.hasText(filePath)
+                && (filePath.startsWith("http://") || filePath.startsWith("https://"));
     }
 }

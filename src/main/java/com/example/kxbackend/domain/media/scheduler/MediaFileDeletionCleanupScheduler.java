@@ -5,6 +5,7 @@ import com.example.kxbackend.domain.generate.repository.OpenAiImageReferenceRepo
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.media.repository.MediaFavoriteRepository;
 import com.example.kxbackend.domain.media.repository.MediaFileRepository;
+import com.example.kxbackend.domain.share.repository.ShareLinkRepository;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.infra.storage.ObjectStorage;
 import lombok.RequiredArgsConstructor;
@@ -30,6 +31,7 @@ public class MediaFileDeletionCleanupScheduler {
     private final MediaFavoriteRepository mediaFavoriteRepository;
     private final GenerateJobRepository generateJobRepository;
     private final OpenAiImageReferenceRepository openAiImageReferenceRepository;
+    private final ShareLinkRepository shareLinkRepository;
     private final ObjectStorage objectStorage;
     private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -65,6 +67,7 @@ public class MediaFileDeletionCleanupScheduler {
         generateJobRepository.clearInputMediaFileReferences(mediaFileIds);
         clearLegacyResultMediaFileReferences(mediaFileIds);
         openAiImageReferenceRepository.deleteByMediaFileIdIn(mediaFileIds);
+        shareLinkRepository.deleteByMediaFileIdIn(mediaFileIds);
         mediaFavoriteRepository.deleteByMediaFileIdIn(mediaFileIds);
 
         for (MediaFile mediaFile : deletableMediaFiles) {
