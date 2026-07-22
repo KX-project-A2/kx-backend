@@ -1,7 +1,9 @@
-package com.example.kxbackend.infra.storage;
+package com.example.kxbackend.infra.storage.service;
 
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
+import com.example.kxbackend.infra.storage.ObjectStorage;
+import com.example.kxbackend.infra.storage.ObjectStorageKeys;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;

@@ -3,7 +3,6 @@ package com.example.kxbackend.domain.generate.service;
 import com.example.kxbackend.domain.generate.client.VideoGenerationClient;
 import com.example.kxbackend.domain.generate.client.VideoGenerationClientException;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationCommand;
-import com.example.kxbackend.domain.generate.client.dto.VideoGenerationResult;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationStatusResult;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationSubmitResult;
 import com.example.kxbackend.domain.generate.dto.request.FalWebhookRequestDto;
@@ -22,6 +21,8 @@ import com.example.kxbackend.domain.media.repository.MediaFileRepository;
 import com.example.kxbackend.domain.user.entity.User;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
+import com.example.kxbackend.infra.storage.s3.S3PresignedUrlService;
+import com.example.kxbackend.infra.storage.service.FalGeneratedVideoStorageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,6 +45,8 @@ public class GenerateVideoService {
     private final MediaFileRepository mediaFileRepository;
     private final VideoGenerationClient videoGenerationClient;
     private final VideoOptionValidator videoOptionValidator;
+    private final FalGeneratedVideoStorageService falGeneratedVideoStorageService;
+    private final S3PresignedUrlService s3PresignedUrlService;
 
     /**
      * 요청 DTO 기반 이미지-영상 생성 작업 생성
@@ -117,7 +120,6 @@ public class GenerateVideoService {
         }
 
         VideoGenerationStatusResult falStatus = getFalStatus(generateJob);
-        completeByPollingResultIfPossible(generateJob, falStatus);
         return GenerateJobStatusResponseDto.from(generateJob, falStatus);
     }
 
@@ -206,7 +208,7 @@ public class GenerateVideoService {
         if (isSeedanceReferenceToVideoModel(modelId)) {
             if (!referenceMediaFiles.isEmpty()) {
                 input.put("image_urls", referenceMediaFiles.stream()
-                        .map(MediaFile::getFilePath)
+                        .map(this::resolveFalAccessibleMediaUrl)
                         .toList());
             }
         } else if (isReferenceToVideoModel(modelId)) {
@@ -214,7 +216,7 @@ public class GenerateVideoService {
             putMediaFilePath(input, "end_image_url", endMediaFile);
             if (!referenceMediaFiles.isEmpty()) {
                 input.put("image_urls", referenceMediaFiles.stream()
-                        .map(MediaFile::getFilePath)
+                        .map(this::resolveFalAccessibleMediaUrl)
                         .toList());
             }
         } else {
@@ -308,8 +310,20 @@ public class GenerateVideoService {
 
     private void putMediaFilePath(Map<String, Object> input, String key, MediaFile mediaFile) {
         if (mediaFile != null) {
-            input.put(key, mediaFile.getFilePath());
+            input.put(key, resolveFalAccessibleMediaUrl(mediaFile));
         }
+    }
+
+    private String resolveFalAccessibleMediaUrl(MediaFile mediaFile) {
+        String filePath = mediaFile.getFilePath();
+        if (isExternalUrl(filePath)) {
+            return filePath;
+        }
+        return s3PresignedUrlService.createReadUrl(filePath).url();
+    }
+
+    private boolean isExternalUrl(String filePath) {
+        return filePath.startsWith("http://") || filePath.startsWith("https://");
     }
 
     private boolean isReferenceToVideoModel(String modelId) {
@@ -365,29 +379,6 @@ public class GenerateVideoService {
         }
     }
 
-    private void completeByPollingResultIfPossible(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
-        if (generateJob.getStatus() == Status.COMPLETED
-                || falStatus == null
-                || !"COMPLETED".equalsIgnoreCase(falStatus.status())) {
-            return;
-        }
-
-        VideoGenerationResult result;
-        try {
-            result = StringUtils.hasText(generateJob.getFalResponseUrl())
-                    ? videoGenerationClient.getResultByUrl(generateJob.getFalResponseUrl())
-                    : videoGenerationClient.getResult(generateJob.getFalModelId(), generateJob.getFalRequestId());
-        } catch (VideoGenerationClientException exception) {
-            generateJob.fail(buildFalClientErrorMessage("fal.ai result 조회 실패", exception));
-            return;
-        }
-
-        String videoUrl = extractVideoUrl(result.payload());
-        if (StringUtils.hasText(videoUrl)) {
-            completeVideoJob(generateJob, videoUrl);
-        }
-    }
-
     private String buildFalClientErrorMessage(String prefix, VideoGenerationClientException exception) {
         if (StringUtils.hasText(exception.getResponseBody())) {
             return prefix + ": HTTP " + exception.getStatusCode() + " - " + exception.getResponseBody();
@@ -396,6 +387,10 @@ public class GenerateVideoService {
     }
 
     private void completeVideoJob(GenerateJob generateJob, String videoUrl) {
+        String savedVideoPath = falGeneratedVideoStorageService.saveGeneratedVideo(
+                generateJob.getUser().getId(),
+                videoUrl
+        );
         GeneratePrompt prompt = generateJob.getPrompts().stream()
                 .filter(generatePrompt -> generatePrompt.getKind() == PromptKind.SCENE)
                 .findFirst()
@@ -404,7 +399,7 @@ public class GenerateVideoService {
         MediaFile resultMediaFile = MediaFile.builder()
                 .user(generateJob.getUser())
                 .type(MediaType.VIDEO)
-                .filePath(videoUrl)
+                .filePath(savedVideoPath)
                 .model(generateJob.getFalModelId())
                 .quality(generateJob.getRequestQuality())
                 .aspectRatio(generateJob.getRequestAspectRatio())

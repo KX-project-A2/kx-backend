@@ -1,4 +1,4 @@
-package com.example.kxbackend.infra.storage;
+package com.example.kxbackend.infra.storage.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -48,6 +48,7 @@ public class StorageProperties {
         private String region = "ap-northeast-2";
         private String accessKey;
         private String secretKey;
+        private long presignedUrlExpirationSeconds = 300;
 
         public String getBucket() {
             return bucket;
@@ -79,6 +80,14 @@ public class StorageProperties {
 
         public void setSecretKey(String secretKey) {
             this.secretKey = secretKey;
+        }
+
+        public long getPresignedUrlExpirationSeconds() {
+            return presignedUrlExpirationSeconds;
+        }
+
+        public void setPresignedUrlExpirationSeconds(long presignedUrlExpirationSeconds) {
+            this.presignedUrlExpirationSeconds = presignedUrlExpirationSeconds;
         }
     }
 }

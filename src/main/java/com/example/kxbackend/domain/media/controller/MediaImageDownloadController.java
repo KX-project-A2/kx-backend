@@ -2,7 +2,7 @@ package com.example.kxbackend.domain.media.controller;
 
 import com.example.kxbackend.domain.media.service.MediaImageDownloadService;
 import com.example.kxbackend.global.security.UserPrincipal;
-import com.example.kxbackend.infra.storage.MediaImageDownloadStorageService.DownloadedMediaFile;
+import com.example.kxbackend.infra.storage.service.MediaImageDownloadStorageService.DownloadedMediaFile;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
