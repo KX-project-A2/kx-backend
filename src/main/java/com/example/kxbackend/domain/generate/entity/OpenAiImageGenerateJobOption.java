@@ -1,5 +1,6 @@
 package com.example.kxbackend.domain.generate.entity;
 
+import com.example.kxbackend.domain.generate.entity.enums.ImageGenerationPurpose;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -42,12 +43,33 @@ public class OpenAiImageGenerateJobOption {
     @Column(nullable = false, length = 20)
     private String quality;
 
-    public static OpenAiImageGenerateJobOption of(GenerateJob generateJob, int imageCount, String size, String quality) {
+    /**
+     * 단일 목적(CHARACTER / BACKGROUND). 과거 데이터는 콤마 구분 문자열이 있을 수 있다.
+     */
+    @Column(name = "purposes", length = 50)
+    private String purposes;
+
+    public static OpenAiImageGenerateJobOption of(
+            GenerateJob generateJob,
+            int imageCount,
+            String size,
+            String quality,
+            ImageGenerationPurpose purpose
+    ) {
         return OpenAiImageGenerateJobOption.builder()
                 .generateJob(generateJob)
                 .imageCount(imageCount)
                 .size(size)
                 .quality(quality)
+                .purposes(purpose.name())
                 .build();
+    }
+
+    public ImageGenerationPurpose getPurpose() {
+        if (purposes == null || purposes.isBlank()) {
+            return ImageGenerationPurpose.CHARACTER;
+        }
+        String first = purposes.split(",")[0].trim();
+        return ImageGenerationPurpose.valueOf(first);
     }
 }

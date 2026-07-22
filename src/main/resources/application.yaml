@@ -21,7 +21,7 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
-      max-request-size: 10MB
+      max-request-size: 85MB
 
   security:
     oauth2:
@@ -45,12 +45,19 @@ openai:
   base-url: https://api.openai.com/v1
   image:
     model: gpt-image-2
-    size: 1024x1024
-    quality: high
+    size: auto
+    quality: standard
     character-sheet:
       size: 1536x1024
   batch:
     poll-interval-ms: 60000
+
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:}
+  base-url: ${ANTHROPIC_BASE_URL:https://api.anthropic.com/v1}
+  prompt-correction:
+    model: ${ANTHROPIC_PROMPT_CORRECTION_MODEL:claude-sonnet-5}
+    max-tokens: ${ANTHROPIC_PROMPT_CORRECTION_MAX_TOKENS:1200}
 
 storage:
   type: ${STORAGE_TYPE:local}
