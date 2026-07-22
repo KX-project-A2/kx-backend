@@ -9,12 +9,12 @@ public record ProfileResponseDto(
         String profileImageUrl
 ) {
 
-    public static ProfileResponseDto from(User user) {
+    public static ProfileResponseDto from(User user, String profileImageUrl) {
         return new ProfileResponseDto(
                 user.getId(),
                 user.getEmail(),
                 user.getNickname(),
-                null
+                profileImageUrl
         );
     }
 }

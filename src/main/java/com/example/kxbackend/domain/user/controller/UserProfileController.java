@@ -5,12 +5,11 @@ import com.example.kxbackend.domain.user.dto.response.GenerationSummaryResponseD
 import com.example.kxbackend.domain.user.dto.response.ProfileResponseDto;
 import com.example.kxbackend.domain.user.service.UserGenerationSummaryService;
 import com.example.kxbackend.domain.user.service.UserProfileService;
-import com.example.kxbackend.global.exception.BusinessException;
-import com.example.kxbackend.global.exception.ErrorCode;
 import com.example.kxbackend.global.response.ApiResponse;
 import com.example.kxbackend.global.security.UserPrincipal;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,17 +43,19 @@ public class UserProfileController {
         return ApiResponse.success("프로필이 수정되었습니다.", response);
     }
 
-    @PostMapping("/profile-image")
-    public ApiResponse<Void> uploadProfileImage(
+    @PostMapping(value = "/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<ProfileResponseDto> uploadProfileImage(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestPart("file") MultipartFile file
     ) {
-        throw new BusinessException(ErrorCode.NOT_IMPLEMENTED, "프로필 이미지 업로드는 S3 저장소 연동 후 지원됩니다.");
+        ProfileResponseDto response = userProfileService.uploadProfileImage(principal.getId(), file);
+        return ApiResponse.success("프로필 이미지가 업로드되었습니다.", response);
     }
 
     @DeleteMapping("/profile-image")
-    public ApiResponse<Void> deleteProfileImage(@AuthenticationPrincipal UserPrincipal principal) {
-        throw new BusinessException(ErrorCode.NOT_IMPLEMENTED, "프로필 이미지 삭제는 S3 저장소 연동 후 지원됩니다.");
+    public ApiResponse<ProfileResponseDto> deleteProfileImage(@AuthenticationPrincipal UserPrincipal principal) {
+        ProfileResponseDto response = userProfileService.deleteProfileImage(principal.getId());
+        return ApiResponse.success("프로필 이미지가 삭제되었습니다.", response);
     }
 
     @GetMapping("/generation-summary")

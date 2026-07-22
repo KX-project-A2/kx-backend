@@ -18,7 +18,7 @@ import java.util.UUID;
  */
 @Service
 @RequiredArgsConstructor
-public class MediaImageUploadStorageService {
+public class ImageUploadStorageService {
 
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
             "image/jpeg",
@@ -37,19 +37,32 @@ public class MediaImageUploadStorageService {
     private final ObjectStorage objectStorage;
 
     /**
-     * 업로드 이미지를 저장하고 object key를 반환한다.
-     * 예: uploads/{userId}/{uuid}.jpg
+     * 사용자 업로드 이미지를 저장하고 object key를 반환한다.
      */
-    public String upload(Long userId, MultipartFile file) {
+    public String uploadMediaImage(Long userId, MultipartFile file) {
+        return uploadImage(userId, file, ImageObjectKeyType.MEDIA);
+    }
+
+    /**
+     * 프로필 이미지를 저장하고 object key를 반환한다.
+     */
+    public String uploadProfileImage(Long userId, MultipartFile file) {
+        return uploadImage(userId, file, ImageObjectKeyType.PROFILE);
+    }
+
+    public void delete(String objectKey) {
+        objectStorage.delete(objectKey);
+    }
+
+    private String uploadImage(Long userId, MultipartFile file, ImageObjectKeyType objectKeyType) {
         validateImageFile(file);
 
         try {
             String extension = resolveExtension(file);
             String fileName = UUID.randomUUID() + "." + extension;
-            String objectKey = ObjectStorageKeys.uploadImageKey(userId, fileName);
-            String contentType = file.getContentType();
+            String objectKey = objectKeyType.createObjectKey(userId, fileName);
 
-            objectStorage.put(objectKey, file.getBytes(), contentType);
+            objectStorage.put(objectKey, file.getBytes(), file.getContentType());
             return objectKey;
         } catch (IOException exception) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "이미지 파일 업로드에 실패했습니다.");
@@ -70,5 +83,22 @@ public class MediaImageUploadStorageService {
     private String resolveExtension(MultipartFile file) {
         String contentType = file.getContentType();
         return EXTENSION_BY_CONTENT_TYPE.getOrDefault(contentType, "bin");
+    }
+
+    private enum ImageObjectKeyType {
+        MEDIA {
+            @Override
+            String createObjectKey(Long userId, String fileName) {
+                return ObjectStorageKeys.uploadImageKey(userId, fileName);
+            }
+        },
+        PROFILE {
+            @Override
+            String createObjectKey(Long userId, String fileName) {
+                return ObjectStorageKeys.profileImageKey(userId, fileName);
+            }
+        };
+
+        abstract String createObjectKey(Long userId, String fileName);
     }
 }

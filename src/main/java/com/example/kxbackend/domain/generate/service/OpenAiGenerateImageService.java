@@ -28,7 +28,7 @@ import com.example.kxbackend.infra.ai.openai.OpenAiBatchClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient.OpenAiBatchStatusResponse;
 import com.example.kxbackend.infra.ai.openai.OpenAiReferenceImageClient;
-import com.example.kxbackend.infra.storage.service.MediaImageUploadStorageService;
+import com.example.kxbackend.infra.storage.service.ImageUploadStorageService;
 import com.example.kxbackend.infra.storage.service.OpenAiGeneratedImageStorageService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -79,7 +79,7 @@ public class OpenAiGenerateImageService {
     private final MediaFileRepository mediaFileRepository;
     private final UserRepository userRepository;
     private final OpenAiGeneratedImageStorageService openAiGeneratedImageStorageService;
-    private final MediaImageUploadStorageService mediaImageUploadStorageService;
+    private final ImageUploadStorageService imageUploadStorageService;
     private final CharacterConceptArtPromptBuilder characterConceptArtPromptBuilder;
     private final ObjectMapper objectMapper;
 
@@ -381,7 +381,7 @@ public class OpenAiGenerateImageService {
             for (int index = 0; index < referenceUploads.size(); index++) {
                 MultipartFile file = referenceUploads.get(index);
                 byte[] content = file.getBytes();
-                String savedPath = mediaImageUploadStorageService.upload(user.getId(), file);
+                String savedPath = imageUploadStorageService.uploadMediaImage(user.getId(), file);
 
                 MediaFile mediaFile = mediaFileRepository.save(
                         MediaFile.builder()
