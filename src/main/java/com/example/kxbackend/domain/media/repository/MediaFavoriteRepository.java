@@ -21,6 +21,8 @@ public interface MediaFavoriteRepository extends JpaRepository<MediaFavorite, Lo
 
     void deleteByUserIdAndMediaFileId(Long userId, Long mediaFileId);
 
+    void deleteByMediaFileIdIn(Collection<Long> mediaFileIds);
+
     @Query("""
             select favorite.mediaFile.id
             from MediaFavorite favorite

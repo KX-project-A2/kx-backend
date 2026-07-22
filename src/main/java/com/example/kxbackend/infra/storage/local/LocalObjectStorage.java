@@ -69,6 +69,16 @@ public class LocalObjectStorage implements ObjectStorage {
         return Files.exists(absolutePath) && Files.isRegularFile(absolutePath);
     }
 
+    @Override
+    public void delete(String objectKey) {
+        Path absolutePath = resolveAbsolutePath(objectKey);
+        try {
+            Files.deleteIfExists(absolutePath);
+        } catch (IOException exception) {
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "파일 삭제에 실패했습니다.");
+        }
+    }
+
     private Path resolveAbsolutePath(String objectKey) {
         String normalizedKey = ObjectStorageKeys.normalize(objectKey);
         Path absolutePath = baseDirectory.resolve(normalizedKey).normalize();

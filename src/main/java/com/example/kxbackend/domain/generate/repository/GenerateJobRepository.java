@@ -4,6 +4,7 @@ import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -36,4 +37,12 @@ public interface GenerateJobRepository extends JpaRepository<GenerateJob, Long> 
             @Param("status") Status status,
             Pageable pageable
     );
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update GenerateJob job
+            set job.inputMediaFile = null
+            where job.inputMediaFile.id in :mediaFileIds
+            """)
+    int clearInputMediaFileReferences(@Param("mediaFileIds") Collection<Long> mediaFileIds);
 }

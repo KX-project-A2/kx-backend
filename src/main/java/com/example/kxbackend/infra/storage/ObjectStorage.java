@@ -27,6 +27,11 @@ public interface ObjectStorage {
      */
     boolean exists(String objectKey);
 
+    /**
+     * 객체를 삭제한다.
+     */
+    void delete(String objectKey);
+
     record StoredObject(byte[] content, String contentType, String fileName) {
     }
 }

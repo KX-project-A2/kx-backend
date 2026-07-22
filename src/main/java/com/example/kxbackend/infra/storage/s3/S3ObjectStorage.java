@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkClientException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
@@ -147,6 +148,27 @@ public class S3ObjectStorage implements ObjectStorage {
             log.error("S3 headObject 실패. bucket={}, key={}, statusCode={}, awsErrorCode={}, message={}",
                     bucket, key, exception.statusCode(), exception.awsErrorDetails().errorCode(), exception.getMessage());
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 파일 존재 여부 확인에 실패했습니다.");
+        }
+    }
+
+    @Override
+    public void delete(String objectKey) {
+        String key = ObjectStorageKeys.normalize(objectKey);
+        try {
+            s3Client.deleteObject(
+                    DeleteObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(key)
+                            .build()
+            );
+        } catch (S3Exception exception) {
+            log.error("S3 deleteObject 실패. bucket={}, key={}, statusCode={}, awsErrorCode={}, message={}",
+                    bucket, key, exception.statusCode(), exception.awsErrorDetails().errorCode(), exception.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 파일 삭제에 실패했습니다.");
+        } catch (SdkClientException exception) {
+            log.error("S3 deleteObject 클라이언트 오류. bucket={}, key={}, message={}",
+                    bucket, key, exception.getMessage());
+            throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "S3 연결/인증에 실패했습니다.");
         }
     }
 }

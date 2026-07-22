@@ -105,7 +105,7 @@ public class OpenAiImageGenerationProcessor {
             savedMediaFiles.add(mediaFileRepository.save(mediaFile));
         }
 
-        imageJob.completeJob(savedMediaFiles.getFirst());
+        imageJob.completeJob();
     }
 
     private void deleteOpenAiReferenceFiles(List<OpenAiImageReference> references) {

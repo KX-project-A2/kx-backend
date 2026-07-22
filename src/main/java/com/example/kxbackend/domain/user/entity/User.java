@@ -41,6 +41,9 @@ public class User {
     @Column(nullable = false, length = 50)
     private String nickname;
 
+    @Column(name = "profile_image_path", length = 1000)
+    private String profileImagePath;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AuthProvider provider;
@@ -72,5 +75,13 @@ public class User {
 
     public void updateNickname(String nickname) {
         this.nickname = nickname;
+    }
+
+    public void updateProfileImagePath(String profileImagePath) {
+        this.profileImagePath = profileImagePath;
+    }
+
+    public void deleteProfileImage() {
+        this.profileImagePath = null;
     }
 }
