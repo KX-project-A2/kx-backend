@@ -1,9 +1,11 @@
 package com.example.kxbackend.domain.media.controller;
 
+import com.example.kxbackend.domain.media.dto.response.MediaFileDownloadUrlResponseDto;
 import com.example.kxbackend.domain.media.dto.response.MediaFilePageResponseDto;
 import com.example.kxbackend.domain.media.dto.response.MediaFileResponseDto;
 import com.example.kxbackend.domain.media.dto.response.RecentMediaWorkResponseDto;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
+import com.example.kxbackend.domain.media.service.MediaFileDownloadUrlService;
 import com.example.kxbackend.domain.media.service.MediaFileQueryService;
 import com.example.kxbackend.global.response.ApiResponse;
 import com.example.kxbackend.global.security.UserPrincipal;
@@ -31,6 +33,7 @@ public class MediaFileQueryController {
     private static final int MAX_SIZE = 100;
 
     private final MediaFileQueryService mediaFileQueryService;
+    private final MediaFileDownloadUrlService mediaFileDownloadUrlService;
 
     @GetMapping
     public ApiResponse<MediaFilePageResponseDto> getMediaFiles(
@@ -62,6 +65,16 @@ public class MediaFileQueryController {
             @PathVariable Long mediaFileId
     ) {
         MediaFileResponseDto response = mediaFileQueryService.getMediaFile(principal.getId(), mediaFileId);
+        return ApiResponse.success(response);
+    }
+
+    @GetMapping("/{mediaFileId}/download-url")
+    public ApiResponse<MediaFileDownloadUrlResponseDto> getMediaFileDownloadUrl(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long mediaFileId
+    ) {
+        MediaFileDownloadUrlResponseDto response =
+                mediaFileDownloadUrlService.createDownloadUrl(principal.getId(), mediaFileId);
         return ApiResponse.success(response);
     }
 

@@ -5,6 +5,7 @@ import com.example.kxbackend.domain.generate.dto.request.OpenAiGenerateImageRequ
 import com.example.kxbackend.domain.generate.dto.response.OpenAiGenerateImageJobResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
+import com.example.kxbackend.domain.generate.entity.OpenAiImageReference;
 import com.example.kxbackend.domain.generate.entity.OpenAiImageGenerateJobOption;
 import com.example.kxbackend.domain.generate.entity.enums.ImageGenerationPurpose;
 import com.example.kxbackend.domain.generate.entity.enums.PromptKind;
@@ -26,6 +27,8 @@ import com.example.kxbackend.infra.ai.anthropic.ClaudePromptCorrectionClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiBatchClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient.OpenAiBatchStatusResponse;
+import com.example.kxbackend.infra.ai.openai.OpenAiReferenceImageClient;
+import com.example.kxbackend.infra.storage.service.MediaImageUploadStorageService;
 import com.example.kxbackend.infra.storage.service.OpenAiGeneratedImageStorageService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;

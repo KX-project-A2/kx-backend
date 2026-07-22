@@ -12,7 +12,7 @@ import com.example.kxbackend.domain.media.entity.enums.MediaType;
 import com.example.kxbackend.domain.media.repository.MediaFileRepository;
 import com.example.kxbackend.infra.ai.openai.OpenAiGenerateImageClient;
 import com.example.kxbackend.infra.ai.openai.OpenAiReferenceImageClient;
-import com.example.kxbackend.infra.storage.OpenAiGeneratedImageStorageService;
+import com.example.kxbackend.infra.storage.service.OpenAiGeneratedImageStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
