@@ -83,6 +83,7 @@ ai:
   fal:
     base-url: ${FAL_BASE_URL:https://queue.fal.run}
     api-key: ${FAL_KEY:}
+    webhook-url: ${FAL_WEBHOOK_URL:}
 
 app:
   oauth2:

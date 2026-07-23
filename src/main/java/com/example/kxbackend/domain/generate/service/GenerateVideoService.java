@@ -22,6 +22,7 @@ import com.example.kxbackend.domain.media.repository.MediaFileRepository;
 import com.example.kxbackend.domain.user.entity.User;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
+import com.example.kxbackend.infra.ai.fal.FalProperties;
 import com.example.kxbackend.infra.storage.s3.S3PresignedUrlService;
 import com.example.kxbackend.infra.storage.service.FalGeneratedVideoStorageService;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,7 @@ public class GenerateVideoService {
     private final VideoOptionValidator videoOptionValidator;
     private final FalGeneratedVideoStorageService falGeneratedVideoStorageService;
     private final S3PresignedUrlService s3PresignedUrlService;
+    private final FalProperties falProperties;
 
     /**
      * 요청 DTO 기반 이미지-영상 생성 작업 생성
@@ -172,7 +174,7 @@ public class GenerateVideoService {
                     new VideoGenerationCommand(
                             resolvedModelId,
                             buildVideoInput(resolvedModelId, startMediaFile, endMediaFile, referenceMediaFiles, prompt, options),
-                            webhookUrl
+                            resolveWebhookUrl(webhookUrl)
                     )
             );
         } catch (VideoGenerationClientException exception) {
@@ -189,6 +191,13 @@ public class GenerateVideoService {
                 submitResult.responseUrl()
         );
         return savedJob;
+    }
+
+    private String resolveWebhookUrl(String requestWebhookUrl) {
+        if (StringUtils.hasText(falProperties.getWebhookUrl())) {
+            return falProperties.getWebhookUrl();
+        }
+        return requestWebhookUrl;
     }
 
     /**
