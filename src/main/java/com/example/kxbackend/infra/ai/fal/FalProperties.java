@@ -11,4 +11,5 @@ public class FalProperties {
 
     private String baseUrl;
     private String apiKey;
+    private String webhookUrl;
 }

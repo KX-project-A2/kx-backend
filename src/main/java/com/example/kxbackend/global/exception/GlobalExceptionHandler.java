@@ -3,6 +3,7 @@ package com.example.kxbackend.global.exception;
 import com.example.kxbackend.global.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -41,6 +42,20 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
                 .body(ApiResponse.error(ErrorCode.INVALID_INPUT_VALUE.getCode(), message));
+    }
+
+    /**
+     * 지원하지 않는 Content-Type 처리
+     * - multipart/form-data 전용 API에 application/json 요청 등이 들어온 경우
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMediaTypeNotSupportedException(
+            HttpMediaTypeNotSupportedException exception
+    ) {
+        ErrorCode errorCode = ErrorCode.UNSUPPORTED_MEDIA_TYPE;
+        return ResponseEntity
+                .status(errorCode.getStatus())
+                .body(ApiResponse.error(errorCode.getCode(), errorCode.getMessage()));
     }
 
     /**
