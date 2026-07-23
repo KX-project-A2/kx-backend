@@ -60,6 +60,9 @@ anthropic:
   prompt-correction:
     model: ${ANTHROPIC_PROMPT_CORRECTION_MODEL:claude-sonnet-5}
     max-tokens: ${ANTHROPIC_PROMPT_CORRECTION_MAX_TOKENS:1200}
+  reverse-prompt:
+    model: ${ANTHROPIC_REVERSE_PROMPT_MODEL:claude-sonnet-5}
+    max-tokens: ${ANTHROPIC_REVERSE_PROMPT_MAX_TOKENS:1200}
 
 storage:
   type: ${STORAGE_TYPE:local}
