@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -40,5 +42,18 @@ public class ReversePromptController {
                 image
         );
         return ApiResponse.success("역프롬프트 추출이 완료되었습니다.", response);
+    }
+
+    /**
+     * 저장된 역프롬프트를 조회한다.
+     */
+    @GetMapping("/reverse-prompt/{reversePromptId}")
+    public ApiResponse<ReversePromptResponseDto> getReversePrompt(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable Long reversePromptId
+    ) {
+        ReversePromptResponseDto response =
+                reversePromptService.getReversePrompt(principal.getId(), reversePromptId);
+        return ApiResponse.success(response);
     }
 }

@@ -2,6 +2,7 @@ package com.example.kxbackend.domain.media.entity;
 
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
+import com.example.kxbackend.domain.generate.entity.ReversePrompt;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
 import com.example.kxbackend.domain.user.entity.User;
 import jakarta.persistence.*;
@@ -43,8 +44,12 @@ public class MediaFile {
     @Column(length = 50)
     private String resolution;
 
-    @Column(name = "reversed_prompt", columnDefinition = "TEXT")
-    private String reversedPrompt;
+    /**
+     * 이 미디어에서 추출한 최신 역프롬프트
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reversed_prompt_id")
+    private ReversePrompt reversedPrompt;
 
     @Column(length = 512)
     private String tags; // 검색 및 필터링용 태그 문자열
@@ -72,13 +77,8 @@ public class MediaFile {
         this.generatePrompt = generatePrompt;
     }
 
-    public void updateReversedPrompt(String reversedPrompt) {
+    public void linkReversedPrompt(ReversePrompt reversedPrompt) {
         this.reversedPrompt = reversedPrompt;
-    }
-
-    public void updateReversePromptResult(String reversedPrompt, String aspectRatio) {
-        this.reversedPrompt = reversedPrompt;
-        this.aspectRatio = aspectRatio;
     }
 
     public void softDelete() {
