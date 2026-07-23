@@ -3,10 +3,11 @@ package com.example.kxbackend.domain.user.controller;
 import com.example.kxbackend.domain.user.dto.request.ProfileUpdateRequestDto;
 import com.example.kxbackend.domain.user.dto.response.GenerationSummaryResponseDto;
 import com.example.kxbackend.domain.user.dto.response.ProfileResponseDto;
-import com.example.kxbackend.domain.user.service.UserGenerationSummaryService;
 import com.example.kxbackend.domain.user.service.UserProfileService;
 import com.example.kxbackend.global.response.ApiResponse;
+import com.example.kxbackend.global.security.AuthCookieService;
 import com.example.kxbackend.global.security.UserPrincipal;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -27,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestPart;
 public class UserProfileController {
 
     private final UserProfileService userProfileService;
-    private final UserGenerationSummaryService userGenerationSummaryService;
+    private final AuthCookieService authCookieService;
 
     @GetMapping("/profile")
     public ApiResponse<ProfileResponseDto> getProfile(@AuthenticationPrincipal UserPrincipal principal) {
@@ -58,10 +59,20 @@ public class UserProfileController {
         return ApiResponse.success("프로필 이미지가 삭제되었습니다.");
     }
 
+    @DeleteMapping
+    public ApiResponse<Void> deleteAccount(
+            @AuthenticationPrincipal UserPrincipal principal,
+            HttpServletResponse response
+    ) {
+        userProfileService.deleteAccount(principal.getId());
+        authCookieService.deleteTokenCookies(response);
+        return ApiResponse.success("계정이 삭제되었습니다.");
+    }
+
     @GetMapping("/generation-summary")
     public ApiResponse<GenerationSummaryResponseDto> getGenerationSummary(
             @AuthenticationPrincipal UserPrincipal principal
     ) {
-        return ApiResponse.success(userGenerationSummaryService.getSummary(principal.getId()));
+        return ApiResponse.success(userProfileService.getSummary(principal.getId()));
     }
 }
