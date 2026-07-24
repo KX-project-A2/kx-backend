@@ -40,6 +40,7 @@ public interface MediaFavoriteRepository extends JpaRepository<MediaFavorite, Lo
             from MediaFavorite favorite
             where favorite.user.id = :userId
               and favorite.mediaFile.deleted = false
+              and favorite.mediaFile.generateJob is not null
             order by favorite.mediaFile.createdAt desc
             """)
     Page<MediaFile> findFavoriteMediaFilesByUserId(
@@ -53,6 +54,7 @@ public interface MediaFavoriteRepository extends JpaRepository<MediaFavorite, Lo
             where favorite.user.id = :userId
               and favorite.mediaFile.type = :type
               and favorite.mediaFile.deleted = false
+              and favorite.mediaFile.generateJob is not null
             order by favorite.mediaFile.createdAt desc
             """)
     Page<MediaFile> findFavoriteMediaFilesByUserIdAndType(
