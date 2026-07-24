@@ -1,7 +1,9 @@
 package com.example.kxbackend.domain.auth.controller;
 
+import com.example.kxbackend.domain.auth.dto.request.EmailCheckRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.LoginRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.SignUpRequestDto;
+import com.example.kxbackend.domain.auth.dto.response.EmailCheckResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.LoginResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.SignUpResponseDto;
 import com.example.kxbackend.domain.auth.dto.response.TokenResponseDto;
@@ -16,6 +18,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -32,6 +36,18 @@ public class AuthController {
 
     private final AuthService authService;
     private final AuthCookieService authCookieService;
+
+    /**
+     * 이메일 중복 확인
+     * - 회원가입 전 입력한 이메일을 사용할 수 있는지 확인한다.
+     */
+    @GetMapping("/email/check")
+    public ApiResponse<EmailCheckResponseDto> checkEmail(
+            @Valid @ModelAttribute EmailCheckRequestDto request
+    ) {
+        EmailCheckResponseDto result = authService.checkEmail(request.email());
+        return ApiResponse.success("이메일 중복 확인이 완료되었습니다.", result);
+    }
 
     /**
      * 회원가입
