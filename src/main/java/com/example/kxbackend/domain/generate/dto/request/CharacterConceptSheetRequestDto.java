@@ -41,6 +41,9 @@ public record CharacterConceptSheetRequestDto(
         String eyeColor,
 
         @Size(max = 100)
+        String eyeCharacteristic,
+
+        @Size(max = 100)
         String expression,
 
         @Size(max = 100)

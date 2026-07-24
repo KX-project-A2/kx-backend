@@ -72,6 +72,7 @@ public class CharacterConceptArtPromptBuilder {
         appendIfPresent(prompt, "hair_style", request.hairStyle());
         appendIfPresent(prompt, "hair_color", request.hairColor());
         appendIfPresent(prompt, "eye_color", request.eyeColor());
+        appendIfPresent(prompt, "eye_characteristic", request.eyeCharacteristic());
         appendIfPresent(prompt, "expression", request.expression());
         appendIfPresent(prompt, "outfit_genre", request.outfitGenre());
         appendIfPresent(prompt, "outfit_color", request.outfitColor());
