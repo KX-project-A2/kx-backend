@@ -42,6 +42,8 @@ public class GenerateVideoService {
 
     private static final int KLING_MAX_REFERENCE_IMAGE_COUNT = 4;
     private static final int SEEDANCE_MAX_REFERENCE_IMAGE_COUNT = 9;
+    private static final String DEFAULT_DURATION = "5";
+    private static final String DEFAULT_ASPECT_RATIO = "16:9";
 
     private final GenerateJobRepository generateJobRepository;
     private final MediaFileRepository mediaFileRepository;
@@ -147,22 +149,23 @@ public class GenerateVideoService {
     ) {
         String resolvedModelId = videoOptionValidator.resolveModelId(modelId);
         validateImageToVideoInput(user, resolvedModelId, startMediaFileId, endMediaFileId, referenceMediaFileIds);
-        videoOptionValidator.validate(resolvedModelId, prompt, options);
+        Map<String, Object> resolvedOptions = applyDefaultVideoOptions(resolvedModelId, options);
+        videoOptionValidator.validate(resolvedModelId, prompt, resolvedOptions);
 
         MediaFile startMediaFile = findMediaFile(user, startMediaFileId, "시작 이미지 파일을 찾을 수 없습니다.");
         MediaFile endMediaFile = findMediaFile(user, endMediaFileId, "끝 이미지 파일을 찾을 수 없습니다.");
         List<MediaFile> referenceMediaFiles = findReferenceMediaFiles(user, referenceMediaFileIds);
         MediaFile primaryInputMediaFile = resolvePrimaryInputMediaFile(startMediaFile, endMediaFile, referenceMediaFiles);
-        String promptContent = resolvePromptContent(prompt, options);
+        String promptContent = resolvePromptContent(prompt, resolvedOptions);
 
         GenerateJob generateJob = GenerateJob.builder()
                 .user(user)
                 .type(Type.IMAGE_TO_VIDEO)
                 .status(Status.CREATED)
                 .inputMediaFile(primaryInputMediaFile)
-                .requestQuality(getOptionValue(options, "quality"))
-                .requestAspectRatio(getOptionValue(options, "aspect_ratio"))
-                .requestResolution(getOptionValue(options, "resolution"))
+                .requestQuality(getOptionValue(resolvedOptions, "quality"))
+                .requestAspectRatio(resolveRequestAspectRatio(resolvedOptions))
+                .requestResolution(getOptionValue(resolvedOptions, "resolution"))
                 .build();
         generateJob.addPrompt(PromptKind.SCENE, 1, promptContent);
 
@@ -173,7 +176,7 @@ public class GenerateVideoService {
             submitResult = videoGenerationClient.submit(
                     new VideoGenerationCommand(
                             resolvedModelId,
-                            buildVideoInput(resolvedModelId, startMediaFile, endMediaFile, referenceMediaFiles, prompt, options),
+                            buildVideoInput(resolvedModelId, startMediaFile, endMediaFile, referenceMediaFiles, prompt, resolvedOptions),
                             resolveWebhookUrl(webhookUrl)
                     )
             );
@@ -198,6 +201,23 @@ public class GenerateVideoService {
             return falProperties.getWebhookUrl();
         }
         return requestWebhookUrl;
+    }
+
+    private Map<String, Object> applyDefaultVideoOptions(String modelId, Map<String, Object> options) {
+        Map<String, Object> resolvedOptions = new LinkedHashMap<>();
+        if (options != null) {
+            resolvedOptions.putAll(options);
+        }
+        resolvedOptions.putIfAbsent("duration", DEFAULT_DURATION);
+        if (supportsAspectRatioOption(modelId)) {
+            resolvedOptions.putIfAbsent("aspect_ratio", DEFAULT_ASPECT_RATIO);
+        }
+        return resolvedOptions;
+    }
+
+    private String resolveRequestAspectRatio(Map<String, Object> options) {
+        String aspectRatio = getOptionValue(options, "aspect_ratio");
+        return StringUtils.hasText(aspectRatio) ? aspectRatio : DEFAULT_ASPECT_RATIO;
     }
 
     /**
@@ -347,6 +367,10 @@ public class GenerateVideoService {
 
     private boolean isSeedanceReferenceToVideoModel(String modelId) {
         return videoOptionValidator.isSeedanceReferenceToVideoModel(modelId);
+    }
+
+    private boolean supportsAspectRatioOption(String modelId) {
+        return isReferenceToVideoModel(modelId) || isSeedanceReferenceToVideoModel(modelId);
     }
 
     private int maxReferenceImageCount(String modelId) {

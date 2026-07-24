@@ -12,19 +12,13 @@ import java.util.Set;
 @Component
 public class VideoOptionValidator {
 
-    public static final String KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID =
-            "fal-ai/kling-video/o3/standard/image-to-video";
     public static final String KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID =
             "fal-ai/kling-video/o3/standard/reference-to-video";
-    public static final String KLING_V3_TURBO_PRO_IMAGE_TO_VIDEO_MODEL_ID =
-            "fal-ai/kling-video/v3/turbo/pro/image-to-video";
     public static final String SEEDANCE_REFERENCE_TO_VIDEO_MODEL_ID =
             "bytedance/seedance-2.0/reference-to-video";
 
     private static final Set<String> SUPPORTED_VIDEO_MODEL_IDS = Set.of(
-            KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID,
             KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID,
-            KLING_V3_TURBO_PRO_IMAGE_TO_VIDEO_MODEL_ID,
             SEEDANCE_REFERENCE_TO_VIDEO_MODEL_ID
     );
     private static final Set<String> KLING_DURATION_VALUES = Set.of(
@@ -40,14 +34,8 @@ public class VideoOptionValidator {
     private static final Set<String> SEEDANCE_RESOLUTION_VALUES = Set.of("480p", "720p", "1080p", "4k");
     private static final Set<String> SHOT_TYPE_VALUES = Set.of("customize", "intelligent");
     private static final Set<String> SEEDANCE_BITRATE_MODE_VALUES = Set.of("standard", "high");
-    private static final Set<String> KLING_IMAGE_TO_VIDEO_OPTION_KEYS = Set.of(
-            "duration", "generate_audio", "multi_prompt", "shot_type"
-    );
     private static final Set<String> KLING_REFERENCE_TO_VIDEO_OPTION_KEYS = Set.of(
             "duration", "generate_audio", "multi_prompt", "shot_type", "aspect_ratio", "elements"
-    );
-    private static final Set<String> KLING_V3_TURBO_PRO_IMAGE_TO_VIDEO_OPTION_KEYS = Set.of(
-            "duration", "multi_prompt"
     );
     private static final Set<String> SEEDANCE_REFERENCE_TO_VIDEO_OPTION_KEYS = Set.of(
             "resolution", "duration", "aspect_ratio", "generate_audio", "bitrate_mode", "end_user_id"
@@ -55,7 +43,7 @@ public class VideoOptionValidator {
 
     public String resolveModelId(String modelId) {
         String resolvedModelId = modelId == null || modelId.isBlank()
-                ? KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID
+                ? KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID
                 : modelId;
         if (!SUPPORTED_VIDEO_MODEL_IDS.contains(resolvedModelId)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 영상 생성 모델입니다.");
@@ -96,14 +84,8 @@ public class VideoOptionValidator {
     }
 
     private Set<String> allowedVideoOptionKeys(String modelId) {
-        if (KLING_O3_STANDARD_IMAGE_TO_VIDEO_MODEL_ID.equals(modelId)) {
-            return KLING_IMAGE_TO_VIDEO_OPTION_KEYS;
-        }
         if (KLING_O3_STANDARD_REFERENCE_TO_VIDEO_MODEL_ID.equals(modelId)) {
             return KLING_REFERENCE_TO_VIDEO_OPTION_KEYS;
-        }
-        if (KLING_V3_TURBO_PRO_IMAGE_TO_VIDEO_MODEL_ID.equals(modelId)) {
-            return KLING_V3_TURBO_PRO_IMAGE_TO_VIDEO_OPTION_KEYS;
         }
         return SEEDANCE_REFERENCE_TO_VIDEO_OPTION_KEYS;
     }
