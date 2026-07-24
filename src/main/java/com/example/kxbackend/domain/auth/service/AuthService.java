@@ -2,6 +2,7 @@ package com.example.kxbackend.domain.auth.service;
 
 import com.example.kxbackend.domain.auth.dto.request.LoginRequestDto;
 import com.example.kxbackend.domain.auth.dto.request.SignUpRequestDto;
+import com.example.kxbackend.domain.auth.dto.response.EmailCheckResponseDto;
 import com.example.kxbackend.domain.auth.entity.RefreshToken;
 import com.example.kxbackend.domain.auth.dto.response.TokenResponseDto;
 import com.example.kxbackend.domain.user.entity.User;
@@ -28,6 +29,15 @@ public class AuthService {
     private final AuthTokenService authTokenService;
     private final RefreshTokenService refreshTokenService;
     private final PasswordEncoder passwordEncoder;
+
+    /**
+     * 이메일 중복 확인
+     */
+    public EmailCheckResponseDto checkEmail(String email) {
+        boolean duplicated = userRepository.existsByEmail(email);
+        return EmailCheckResponseDto.of(email, duplicated);
+    }
+
 
     /**
      * 회원가입
