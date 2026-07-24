@@ -19,6 +19,12 @@ public interface MediaFileRepository extends JpaRepository<MediaFile, Long> {
     Optional<MediaFile> findByIdAndUserIdAndDeletedFalse(Long id, Long userId);
     Page<MediaFile> findAllByUserIdAndDeletedFalse(Long userId, Pageable pageable);
     Page<MediaFile> findAllByUserIdAndTypeAndDeletedFalse(Long userId, MediaType type, Pageable pageable);
+    Page<MediaFile> findAllByUserIdAndGenerateJobIsNotNullAndDeletedFalse(Long userId, Pageable pageable);
+    Page<MediaFile> findAllByUserIdAndTypeAndGenerateJobIsNotNullAndDeletedFalse(
+            Long userId,
+            MediaType type,
+            Pageable pageable
+    );
     List<MediaFile> findAllByGenerateJob_IdAndDeletedFalseOrderByIdAsc(Long generateJobId);
     List<MediaFile> findAllByGenerateJob_IdInAndDeletedFalseOrderByCreatedAtDescIdAsc(Collection<Long> generateJobIds);
     long countByUserIdAndDeletedFalse(Long userId);

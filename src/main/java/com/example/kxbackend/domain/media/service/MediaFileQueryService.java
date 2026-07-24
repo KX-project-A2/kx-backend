@@ -111,8 +111,8 @@ public class MediaFileQueryService {
         }
 
         return type == null
-                ? mediaFileRepository.findAllByUserIdAndDeletedFalse(userId, pageable)
-                : mediaFileRepository.findAllByUserIdAndTypeAndDeletedFalse(userId, type, pageable);
+                ? mediaFileRepository.findAllByUserIdAndGenerateJobIsNotNullAndDeletedFalse(userId, pageable)
+                : mediaFileRepository.findAllByUserIdAndTypeAndGenerateJobIsNotNullAndDeletedFalse(userId, type, pageable);
     }
 
     private Set<Long> getFavoriteMediaFileIds(Long userId, List<MediaFile> mediaFiles) {
