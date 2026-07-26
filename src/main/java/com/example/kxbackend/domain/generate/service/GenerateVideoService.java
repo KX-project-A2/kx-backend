@@ -14,6 +14,7 @@ import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
 import com.example.kxbackend.domain.generate.entity.enums.PromptKind;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
 import com.example.kxbackend.domain.generate.entity.enums.Type;
+import com.example.kxbackend.domain.generate.error.FalErrorMessageMapper;
 import com.example.kxbackend.domain.generate.repository.GenerateJobRepository;
 import com.example.kxbackend.domain.generate.validation.VideoOptionValidator;
 import com.example.kxbackend.domain.media.entity.MediaFile;
@@ -426,17 +427,17 @@ public class GenerateVideoService {
         FalPayloadDetail payloadDetail = extractPayloadDetail(request.payload());
         String statusCode = extractStatusCode(request.error());
         if (payloadDetail != null && StringUtils.hasText(payloadDetail.message())) {
-            return formatFalErrorMessage(payloadDetail.type(), payloadDetail.message(), statusCode);
+            return FalErrorMessageMapper.toUserMessage(payloadDetail.type(), payloadDetail.message(), statusCode);
         }
 
         Object payloadMessage = extractPayloadValue(request.payload(), "message");
         if (payloadMessage != null && StringUtils.hasText(Objects.toString(payloadMessage, null))) {
-            return formatFalErrorMessage(null, Objects.toString(payloadMessage, null), statusCode);
+            return FalErrorMessageMapper.toUserMessage(extractPayloadErrorType(request.payload()), Objects.toString(payloadMessage, null), statusCode);
         }
 
         Object payloadError = extractPayloadValue(request.payload(), "error");
         if (payloadError != null && StringUtils.hasText(Objects.toString(payloadError, null))) {
-            return formatFalErrorMessage(null, Objects.toString(payloadError, null), statusCode);
+            return FalErrorMessageMapper.toUserMessage(extractPayloadErrorType(request.payload()), Objects.toString(payloadError, null), statusCode);
         }
 
         if (StringUtils.hasText(request.error())) {
@@ -474,23 +475,20 @@ public class GenerateVideoService {
         return matcher.find() ? matcher.group(1) : null;
     }
 
-    private String formatFalErrorMessage(String type, String message, String statusCode) {
-        StringBuilder builder = new StringBuilder();
-        if (StringUtils.hasText(type)) {
-            builder.append('[').append(type).append("] : ");
-        }
-        builder.append(message);
-        if (StringUtils.hasText(statusCode)) {
-            builder.append(" (HTTP ").append(statusCode).append(')');
-        }
-        return builder.toString();
-    }
-
     private Object extractPayloadValue(Map<String, Object> payload, String key) {
         if (payload == null || payload.isEmpty()) {
             return null;
         }
         return payload.get(key);
+    }
+
+    private String extractPayloadErrorType(Map<String, Object> payload) {
+        Object errorType = extractPayloadValue(payload, "error_type");
+        if (errorType != null && StringUtils.hasText(Objects.toString(errorType, null))) {
+            return Objects.toString(errorType, null);
+        }
+        Object type = extractPayloadValue(payload, "type");
+        return type == null ? null : Objects.toString(type, null);
     }
 
     private void syncVideoProgressStatus(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
