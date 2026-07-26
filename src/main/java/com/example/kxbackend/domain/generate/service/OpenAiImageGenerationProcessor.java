@@ -10,7 +10,9 @@ import com.example.kxbackend.domain.generate.repository.OpenAiImageReferenceRepo
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
 import com.example.kxbackend.domain.media.repository.MediaFileRepository;
+import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.infra.ai.openai.OpenAiGenerateImageClient;
+import com.example.kxbackend.infra.ai.openai.OpenAiImageErrorMessageResolver;
 import com.example.kxbackend.infra.ai.openai.OpenAiReferenceImageClient;
 import com.example.kxbackend.infra.storage.service.OpenAiGeneratedImageStorageService;
 import lombok.RequiredArgsConstructor;
@@ -39,6 +41,7 @@ public class OpenAiImageGenerationProcessor {
     private final OpenAiImageReferenceRepository openAiImageReferenceRepository;
     private final MediaFileRepository mediaFileRepository;
     private final OpenAiGeneratedImageStorageService openAiGeneratedImageStorageService;
+    private final OpenAiImageErrorMessageResolver openAiImageErrorMessageResolver;
 
     @Value("${openai.image.model:gpt-image-2}")
     private String imageModel;
@@ -74,9 +77,12 @@ public class OpenAiImageGenerationProcessor {
             saveGeneratedImageResults(imageJob, generatedImages);
             log.info("OpenAI 이미지 비동기 생성 완료. jobId={}, imageCount={}, referenceCount={}",
                     jobId, generatedImages.size(), references.size());
+        } catch (BusinessException exception) {
+            log.error("OpenAI 이미지 비동기 생성 실패. jobId={}, message={}", jobId, exception.getMessage(), exception);
+            imageJob.fail(exception.getMessage());
         } catch (Exception exception) {
             log.error("OpenAI 이미지 비동기 생성 실패. jobId={}", jobId, exception);
-            imageJob.fail("OpenAI 이미지 생성에 실패했습니다: " + exception.getMessage());
+            imageJob.fail(openAiImageErrorMessageResolver.resolveFromExceptionMessage(exception.getMessage()));
         } finally {
             deleteOpenAiReferenceFiles(references);
         }
