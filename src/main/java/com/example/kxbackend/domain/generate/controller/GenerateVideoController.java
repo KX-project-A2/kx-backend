@@ -68,7 +68,7 @@ public class GenerateVideoController {
      */
     @PostMapping("/webhooks/fal")
     public ApiResponse<GenerateJobResponseDto> handleFalWebhook(@RequestBody FalWebhookRequestDto request) {
-        GenerateJob generateJob = generateVideoService.handleFalWebhook(request);
-        return ApiResponse.success("fal.ai webhook이 처리되었습니다.", generateVideoService.toGenerateJobResponse(generateJob));
+        GenerateJobResponseDto response = generateVideoService.handleFalWebhookResponse(request);
+        return ApiResponse.success("fal.ai webhook이 처리되었습니다.", response);
     }
 }
