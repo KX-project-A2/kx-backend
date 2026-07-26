@@ -26,6 +26,7 @@ import com.example.kxbackend.infra.ai.fal.FalProperties;
 import com.example.kxbackend.infra.storage.s3.S3PresignedUrlService;
 import com.example.kxbackend.infra.storage.service.FalGeneratedVideoStorageService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -34,16 +35,20 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class GenerateVideoService {
 
     private static final int KLING_MAX_REFERENCE_IMAGE_COUNT = 4;
     private static final int SEEDANCE_MAX_REFERENCE_IMAGE_COUNT = 9;
     private static final String DEFAULT_DURATION = "5";
     private static final String DEFAULT_ASPECT_RATIO = "16:9";
+    private static final Pattern STATUS_CODE_PATTERN = Pattern.compile("(?i)status code:?\\s*(\\d{3})");
 
     private final GenerateJobRepository generateJobRepository;
     private final MediaFileRepository mediaFileRepository;
@@ -87,18 +92,45 @@ public class GenerateVideoService {
         }
 
         if (isFailureStatus(request.status()) || StringUtils.hasText(request.error())) {
-            generateJob.fail(StringUtils.hasText(request.error()) ? request.error() : request.status());
+            String errorMessage = resolveFalWebhookErrorMessage(request);
+            log.warn(
+                    "fal.ai video generation failed. jobId={}, requestId={}, modelId={}, status={}, errorMessage={}, payloadDetail={}, payloadError={}, payloadMessage={}, payloadKeys={}",
+                    generateJob.getId(),
+                    request.requestId(),
+                    generateJob.getFalModelId(),
+                    request.status(),
+                    errorMessage,
+                    extractPayloadValue(request.payload(), "detail"),
+                    extractPayloadValue(request.payload(), "error"),
+                    extractPayloadValue(request.payload(), "message"),
+                    request.payload() == null ? List.of() : request.payload().keySet()
+            );
+            generateJob.fail(errorMessage);
             return generateJob;
         }
 
         String videoUrl = extractVideoUrl(request.payload());
         if (!StringUtils.hasText(videoUrl)) {
+            log.warn(
+                    "fal.ai video webhook payload did not contain video URL. jobId={}, requestId={}, modelId={}, status={}, payloadKeys={}",
+                    generateJob.getId(),
+                    request.requestId(),
+                    generateJob.getFalModelId(),
+                    request.status(),
+                    request.payload() == null ? List.of() : request.payload().keySet()
+            );
             generateJob.fail("fal.ai webhook payload에서 영상 URL을 찾을 수 없습니다.");
             return generateJob;
         }
 
         completeVideoJob(generateJob, videoUrl);
         return generateJob;
+    }
+
+    @Transactional
+    public GenerateJobResponseDto handleFalWebhookResponse(FalWebhookRequestDto request) {
+        GenerateJob generateJob = handleFalWebhook(request);
+        return toGenerateJobResponse(generateJob);
     }
 
     /**
@@ -125,6 +157,7 @@ public class GenerateVideoService {
         }
 
         VideoGenerationStatusResult falStatus = getFalStatus(generateJob);
+        syncVideoProgressStatus(generateJob, falStatus);
         MediaFile resultMediaFile = findRepresentativeResultMediaFile(generateJob.getId());
         return GenerateJobStatusResponseDto.from(generateJob, falStatus, resultMediaFile);
     }
@@ -389,6 +422,86 @@ public class GenerateVideoService {
                 || "ERROR".equalsIgnoreCase(status);
     }
 
+    private String resolveFalWebhookErrorMessage(FalWebhookRequestDto request) {
+        FalPayloadDetail payloadDetail = extractPayloadDetail(request.payload());
+        String statusCode = extractStatusCode(request.error());
+        if (payloadDetail != null && StringUtils.hasText(payloadDetail.message())) {
+            return formatFalErrorMessage(payloadDetail.type(), payloadDetail.message(), statusCode);
+        }
+
+        Object payloadMessage = extractPayloadValue(request.payload(), "message");
+        if (payloadMessage != null && StringUtils.hasText(Objects.toString(payloadMessage, null))) {
+            return formatFalErrorMessage(null, Objects.toString(payloadMessage, null), statusCode);
+        }
+
+        Object payloadError = extractPayloadValue(request.payload(), "error");
+        if (payloadError != null && StringUtils.hasText(Objects.toString(payloadError, null))) {
+            return formatFalErrorMessage(null, Objects.toString(payloadError, null), statusCode);
+        }
+
+        if (StringUtils.hasText(request.error())) {
+            return request.error();
+        }
+        return request.status();
+    }
+
+    private FalPayloadDetail extractPayloadDetail(Map<String, Object> payload) {
+        Object detail = extractPayloadValue(payload, "detail");
+        if (detail instanceof List<?> details && !details.isEmpty()) {
+            Object firstDetail = details.getFirst();
+            if (firstDetail instanceof Map<?, ?> detailMap) {
+                return new FalPayloadDetail(
+                        Objects.toString(detailMap.get("type"), null),
+                        Objects.toString(detailMap.get("msg"), null)
+                );
+            }
+            return new FalPayloadDetail(null, Objects.toString(firstDetail, null));
+        }
+        if (detail instanceof Map<?, ?> detailMap) {
+            return new FalPayloadDetail(
+                    Objects.toString(detailMap.get("type"), null),
+                    Objects.toString(detailMap.get("msg"), null)
+            );
+        }
+        return null;
+    }
+
+    private String extractStatusCode(String error) {
+        if (!StringUtils.hasText(error)) {
+            return null;
+        }
+        Matcher matcher = STATUS_CODE_PATTERN.matcher(error);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String formatFalErrorMessage(String type, String message, String statusCode) {
+        StringBuilder builder = new StringBuilder();
+        if (StringUtils.hasText(type)) {
+            builder.append('[').append(type).append("] : ");
+        }
+        builder.append(message);
+        if (StringUtils.hasText(statusCode)) {
+            builder.append(" (HTTP ").append(statusCode).append(')');
+        }
+        return builder.toString();
+    }
+
+    private Object extractPayloadValue(Map<String, Object> payload, String key) {
+        if (payload == null || payload.isEmpty()) {
+            return null;
+        }
+        return payload.get(key);
+    }
+
+    private void syncVideoProgressStatus(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
+        if (falStatus == null || generateJob.getStatus() != Status.SUBMITTED) {
+            return;
+        }
+        if ("IN_PROGRESS".equalsIgnoreCase(falStatus.status())) {
+            generateJob.progress();
+        }
+    }
+
     private VideoGenerationStatusResult getFalStatus(GenerateJob generateJob) {
         if (!StringUtils.hasText(generateJob.getFalModelId()) || !StringUtils.hasText(generateJob.getFalRequestId())) {
             return null;
@@ -521,5 +634,8 @@ public class GenerateVideoService {
                 .map(shot -> Objects.toString(shot.get("prompt"), ""))
                 .filter(StringUtils::hasText)
                 .collect(Collectors.joining("\n\n"));
+    }
+
+    private record FalPayloadDetail(String type, String message) {
     }
 }
