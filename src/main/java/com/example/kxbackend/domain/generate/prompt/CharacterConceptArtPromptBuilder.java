@@ -97,6 +97,15 @@ public class CharacterConceptArtPromptBuilder {
                 Output only the finished official Character Concept Art Sheet visual.
                 """);
 
+        if (request.additionalPrompt() != null && !request.additionalPrompt().isBlank()) {
+            prompt.append("""
+
+                    === ADDITIONAL USER PROMPT ===
+                    Apply the following extra instructions while keeping consistency with the attributes above:
+                    """);
+            prompt.append(request.additionalPrompt().trim()).append('\n');
+        }
+
         return prompt.toString().trim();
     }
 

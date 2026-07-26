@@ -345,7 +345,9 @@ public class OpenAiGenerateImageService {
 
                     [IMAGE GENERATION PURPOSE: CHARACTER]
                     Prioritize the character's identity, design, pose, expression, outfit, and visual consistency.
-                    Use the background only as supporting context unless the user's prompt explicitly requires more detail.
+                    Arrange front, side, and back views of the same character side by side in one image.
+                    Use a clean white or neutral studio background with no scenic backdrop and no cast shadows from the environment.
+                    Do not include any readable text, labels, logos, captions, UI, or watermarks in the image.
                     """;
         }
         return prompt + """

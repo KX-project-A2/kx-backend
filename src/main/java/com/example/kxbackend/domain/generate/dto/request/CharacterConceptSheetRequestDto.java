@@ -55,6 +55,10 @@ public record CharacterConceptSheetRequestDto(
         /** 복수 선택 가능한 악세서리. "없음"은 다른 아이템과 함께 오면 무시된다. */
         List<@Size(max = 100) String> accessories,
 
+        /** 폼에 없는 추가 정보(이름, 소품, 보조 색상, 세부 설정 등). */
+        @Size(max = 2000, message = "추가 프롬프트는 2000자 이하여야 합니다.")
+        String additionalPrompt,
+
         @Min(value = 1, message = "생성 이미지 수는 1장 이상이어야 합니다.")
         @Max(value = 4, message = "생성 이미지 수는 최대 4장까지 가능합니다.")
         Integer imageCount,
