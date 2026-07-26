@@ -52,18 +52,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
      * Bearer token 추출
      */
     private String resolveToken(HttpServletRequest request) {
-        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
-
-        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
-            return bearerToken.substring(BEARER_PREFIX.length());
-        }
-
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
                 if (AuthCookieService.ACCESS_TOKEN_COOKIE_NAME.equals(cookie.getName())) {
                     return cookie.getValue();
                 }
             }
+        }
+
+        String bearerToken = request.getHeader(AUTHORIZATION_HEADER);
+        if (StringUtils.hasText(bearerToken) && bearerToken.startsWith(BEARER_PREFIX)) {
+            return bearerToken.substring(BEARER_PREFIX.length());
         }
 
         return null;
