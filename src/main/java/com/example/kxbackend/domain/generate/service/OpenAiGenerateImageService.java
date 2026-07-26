@@ -2,6 +2,7 @@ package com.example.kxbackend.domain.generate.service;
 
 import com.example.kxbackend.domain.generate.dto.request.CharacterConceptSheetRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.OpenAiGenerateImageRequestDto;
+import com.example.kxbackend.domain.generate.dto.response.OpenAiActiveImageJobResponseDto;
 import com.example.kxbackend.domain.generate.dto.response.OpenAiGenerateImageJobResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
@@ -190,7 +191,7 @@ public class OpenAiGenerateImageService {
         return buildResponse(imageJob, jobOption);
     }
 
-    public List<OpenAiGenerateImageJobResponseDto> getActiveImageJobs(Long userId) {
+    public List<OpenAiActiveImageJobResponseDto> getActiveImageJobs(Long userId) {
         return openAiImageGenerateJobRepository
                 .findAllByUser_IdAndTypeAndStatusInOrderByCreatedAtDesc(
                         userId,
@@ -198,9 +199,10 @@ public class OpenAiGenerateImageService {
                         ACTIVE_IMAGE_JOB_STATUSES
                 )
                 .stream()
-                .map(imageJob -> buildResponse(
+                .map(imageJob -> OpenAiActiveImageJobResponseDto.from(
                         imageJob,
-                        openAiImageGenerateJobOptionRepository.findById(imageJob.getId()).orElse(null)
+                        openAiImageGenerateJobOptionRepository.findById(imageJob.getId()).orElse(null),
+                        openAiImageReferenceRepository.findAllByGenerateJob_IdOrderByReferenceOrderAsc(imageJob.getId())
                 ))
                 .toList();
     }
