@@ -14,20 +14,14 @@ public record GenerateVideoActiveJobResponseDto(
         Type type,
         Status status,
         String prompt,
-        String falRequestId,
         String falModelId,
-        String falStatusUrl,
-        String falResponseUrl,
         String requestQuality,
         String requestAspectRatio,
         String requestResolution,
         Long inputMediaFileId,
         List<GenerateJobReferenceMediaResponseDto> referenceMedia,
-        String errorMessage,
         LocalDateTime submittedAt,
-        LocalDateTime completedAt,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime createdAt
 ) {
 
     public static GenerateVideoActiveJobResponseDto from(
@@ -40,10 +34,7 @@ public record GenerateVideoActiveJobResponseDto(
                 generateJob.getType(),
                 generateJob.getStatus(),
                 generateJob.getPrompts().isEmpty() ? null : generateJob.getPrompts().getFirst().getContent(),
-                generateJob.getFalRequestId(),
                 generateJob.getFalModelId(),
-                generateJob.getFalStatusUrl(),
-                generateJob.getFalResponseUrl(),
                 generateJob.getRequestQuality(),
                 generateJob.getRequestAspectRatio(),
                 generateJob.getRequestResolution(),
@@ -52,11 +43,8 @@ public record GenerateVideoActiveJobResponseDto(
                         .filter(reference -> activeMediaFile(reference.getMediaFile()) != null)
                         .map(GenerateJobReferenceMediaResponseDto::from)
                         .toList(),
-                generateJob.getErrorMessage(),
                 generateJob.getSubmittedAt(),
-                generateJob.getCompletedAt(),
-                generateJob.getCreatedAt(),
-                generateJob.getUpdatedAt()
+                generateJob.getCreatedAt()
         );
     }
 
