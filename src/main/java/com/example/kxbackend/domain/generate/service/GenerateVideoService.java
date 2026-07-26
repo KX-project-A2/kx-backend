@@ -8,13 +8,17 @@ import com.example.kxbackend.domain.generate.client.dto.VideoGenerationSubmitRes
 import com.example.kxbackend.domain.generate.dto.request.FalWebhookRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.ImageToVideoGenerateRequestDto;
 import com.example.kxbackend.domain.generate.dto.response.GenerateJobResponseDto;
+import com.example.kxbackend.domain.generate.dto.response.GenerateVideoActiveJobResponseDto;
 import com.example.kxbackend.domain.generate.dto.response.GenerateJobStatusResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
+import com.example.kxbackend.domain.generate.entity.GenerateJobReferenceMedia;
 import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
 import com.example.kxbackend.domain.generate.entity.enums.PromptKind;
+import com.example.kxbackend.domain.generate.entity.enums.ReferenceImageType;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
 import com.example.kxbackend.domain.generate.entity.enums.Type;
 import com.example.kxbackend.domain.generate.error.FalErrorMessageMapper;
+import com.example.kxbackend.domain.generate.repository.GenerateJobReferenceMediaRepository;
 import com.example.kxbackend.domain.generate.repository.GenerateJobRepository;
 import com.example.kxbackend.domain.generate.validation.VideoOptionValidator;
 import com.example.kxbackend.domain.media.entity.MediaFile;
@@ -49,9 +53,11 @@ public class GenerateVideoService {
     private static final int SEEDANCE_MAX_REFERENCE_IMAGE_COUNT = 9;
     private static final String DEFAULT_DURATION = "5";
     private static final String DEFAULT_ASPECT_RATIO = "16:9";
+    private static final List<Status> ACTIVE_VIDEO_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
     private static final Pattern STATUS_CODE_PATTERN = Pattern.compile("(?i)status code:?\\s*(\\d{3})");
 
     private final GenerateJobRepository generateJobRepository;
+    private final GenerateJobReferenceMediaRepository generateJobReferenceMediaRepository;
     private final MediaFileRepository mediaFileRepository;
     private final VideoGenerationClient videoGenerationClient;
     private final VideoOptionValidator videoOptionValidator;
@@ -167,6 +173,27 @@ public class GenerateVideoService {
         return GenerateJobResponseDto.from(generateJob, findRepresentativeResultMediaFile(generateJob.getId()));
     }
 
+    @Transactional(readOnly = true)
+    public List<GenerateVideoActiveJobResponseDto> getActiveVideoJobs(User user) {
+        if (user == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+
+        return generateJobRepository
+                .findAllByUser_IdAndTypeAndStatusInOrderByCreatedAtDesc(
+                        user.getId(),
+                        Type.IMAGE_TO_VIDEO,
+                        ACTIVE_VIDEO_JOB_STATUSES
+                )
+                .stream()
+                .map(generateJob -> GenerateVideoActiveJobResponseDto.from(
+                        generateJob,
+                        generateJobReferenceMediaRepository
+                                .findAllByGenerateJob_IdOrderByReferenceTypeAscReferenceOrderAsc(generateJob.getId())
+                ))
+                .toList();
+    }
+
     /**
      * 입력 이미지 URL과 프롬프트를 fal.ai 생성 요청으로 제출
      */
@@ -204,6 +231,7 @@ public class GenerateVideoService {
         generateJob.addPrompt(PromptKind.SCENE, 1, promptContent);
 
         GenerateJob savedJob = generateJobRepository.save(generateJob);
+        saveReferenceMedia(savedJob, startMediaFile, endMediaFile, referenceMediaFiles);
 
         VideoGenerationSubmitResult submitResult;
         try {
@@ -375,6 +403,44 @@ public class GenerateVideoService {
             return referenceMediaFiles.getFirst();
         }
         return endMediaFile;
+    }
+
+    private void saveReferenceMedia(
+            GenerateJob generateJob,
+            MediaFile startMediaFile,
+            MediaFile endMediaFile,
+            List<MediaFile> referenceMediaFiles
+    ) {
+        List<GenerateJobReferenceMedia> references = new java.util.ArrayList<>();
+        if (startMediaFile != null) {
+            references.add(buildReferenceMedia(generateJob, startMediaFile, ReferenceImageType.START, 1));
+        }
+        if (endMediaFile != null) {
+            references.add(buildReferenceMedia(generateJob, endMediaFile, ReferenceImageType.END, 1));
+        }
+        for (int index = 0; index < referenceMediaFiles.size(); index++) {
+            references.add(buildReferenceMedia(
+                    generateJob,
+                    referenceMediaFiles.get(index),
+                    ReferenceImageType.REFERENCE,
+                    index + 1
+            ));
+        }
+        generateJobReferenceMediaRepository.saveAll(references);
+    }
+
+    private GenerateJobReferenceMedia buildReferenceMedia(
+            GenerateJob generateJob,
+            MediaFile mediaFile,
+            ReferenceImageType referenceType,
+            int referenceOrder
+    ) {
+        return GenerateJobReferenceMedia.builder()
+                .generateJob(generateJob)
+                .mediaFile(mediaFile)
+                .referenceType(referenceType)
+                .referenceOrder(referenceOrder)
+                .build();
     }
 
     private void putMediaFilePath(Map<String, Object> input, String key, MediaFile mediaFile) {

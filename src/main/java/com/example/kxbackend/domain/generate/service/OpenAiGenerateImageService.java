@@ -62,6 +62,7 @@ public class OpenAiGenerateImageService {
 
     private static final int MAX_REFERENCE_IMAGE_COUNT = 8;
     private static final List<Status> PENDING_IMAGE_JOB_STATUSES = List.of(Status.SUBMITTED, Status.IN_PROGRESS);
+    private static final List<Status> ACTIVE_IMAGE_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
 
     private final OpenAiBatchClient openAiBatchClient;
     private final OpenAiImageBatchResultClient openAiImageBatchResultClient;
@@ -187,6 +188,21 @@ public class OpenAiGenerateImageService {
         GenerateJob imageJob = getOwnedImageJob(userId, jobId);
         OpenAiImageGenerateJobOption jobOption = openAiImageGenerateJobOptionRepository.findById(jobId).orElse(null);
         return buildResponse(imageJob, jobOption);
+    }
+
+    public List<OpenAiGenerateImageJobResponseDto> getActiveImageJobs(Long userId) {
+        return openAiImageGenerateJobRepository
+                .findAllByUser_IdAndTypeAndStatusInOrderByCreatedAtDesc(
+                        userId,
+                        Type.TEXT_TO_IMAGE,
+                        ACTIVE_IMAGE_JOB_STATUSES
+                )
+                .stream()
+                .map(imageJob -> buildResponse(
+                        imageJob,
+                        openAiImageGenerateJobOptionRepository.findById(imageJob.getId()).orElse(null)
+                ))
+                .toList();
     }
 
     /**

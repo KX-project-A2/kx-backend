@@ -1,6 +1,7 @@
 package com.example.kxbackend.domain.media.scheduler;
 
 import com.example.kxbackend.domain.generate.repository.GenerateJobRepository;
+import com.example.kxbackend.domain.generate.repository.GenerateJobReferenceMediaRepository;
 import com.example.kxbackend.domain.generate.repository.OpenAiImageReferenceRepository;
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.media.repository.MediaFavoriteRepository;
@@ -30,6 +31,7 @@ public class MediaFileDeletionCleanupScheduler {
     private final MediaFileRepository mediaFileRepository;
     private final MediaFavoriteRepository mediaFavoriteRepository;
     private final GenerateJobRepository generateJobRepository;
+    private final GenerateJobReferenceMediaRepository generateJobReferenceMediaRepository;
     private final OpenAiImageReferenceRepository openAiImageReferenceRepository;
     private final ShareLinkRepository shareLinkRepository;
     private final ObjectStorage objectStorage;
@@ -66,6 +68,7 @@ public class MediaFileDeletionCleanupScheduler {
 
         generateJobRepository.clearInputMediaFileReferences(mediaFileIds);
         clearLegacyResultMediaFileReferences(mediaFileIds);
+        generateJobReferenceMediaRepository.deleteByMediaFileIdIn(mediaFileIds);
         openAiImageReferenceRepository.deleteByMediaFileIdIn(mediaFileIds);
         shareLinkRepository.deleteByMediaFileIdIn(mediaFileIds);
         mediaFavoriteRepository.deleteByMediaFileIdIn(mediaFileIds);
