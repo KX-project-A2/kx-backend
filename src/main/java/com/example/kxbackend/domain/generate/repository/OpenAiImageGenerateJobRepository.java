@@ -13,4 +13,10 @@ import java.util.List;
 public interface OpenAiImageGenerateJobRepository extends JpaRepository<GenerateJob, Long> {
 
     List<GenerateJob> findAllByStatusInAndType(List<Status> statuses, Type type);
+
+    List<GenerateJob> findAllByUser_IdAndTypeAndStatusInOrderByCreatedAtDesc(
+            Long userId,
+            Type type,
+            List<Status> statuses
+    );
 }

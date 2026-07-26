@@ -4,6 +4,7 @@ import com.example.kxbackend.domain.generate.dto.request.FalWebhookRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.ImageToVideoGenerateRequestDto;
 import com.example.kxbackend.domain.generate.dto.response.GenerateJobResponseDto;
 import com.example.kxbackend.domain.generate.dto.response.GenerateJobStatusResponseDto;
+import com.example.kxbackend.domain.generate.dto.response.GenerateVideoActiveJobResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.service.GenerateVideoService;
 import com.example.kxbackend.domain.user.entity.User;
@@ -23,6 +24,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/generate")
@@ -60,6 +63,20 @@ public class GenerateVideoController {
                 .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
 
         GenerateJobStatusResponseDto response = generateVideoService.getImageToVideoJobStatus(user, jobId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 진행 중인 영상 생성 작업 목록 조회
+     */
+    @GetMapping("/videos/jobs/active")
+    public ApiResponse<List<GenerateVideoActiveJobResponseDto>> getActiveImageToVideoJobs(
+            @AuthenticationPrincipal UserPrincipal userPrincipal
+    ) {
+        User user = userRepository.findById(userPrincipal.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.UNAUTHORIZED));
+
+        List<GenerateVideoActiveJobResponseDto> response = generateVideoService.getActiveVideoJobs(user);
         return ApiResponse.success(response);
     }
 

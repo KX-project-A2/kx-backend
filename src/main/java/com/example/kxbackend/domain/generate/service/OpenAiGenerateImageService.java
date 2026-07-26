@@ -2,6 +2,7 @@ package com.example.kxbackend.domain.generate.service;
 
 import com.example.kxbackend.domain.generate.dto.request.CharacterConceptSheetRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.OpenAiGenerateImageRequestDto;
+import com.example.kxbackend.domain.generate.dto.response.OpenAiActiveImageJobResponseDto;
 import com.example.kxbackend.domain.generate.dto.response.OpenAiGenerateImageJobResponseDto;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
@@ -30,6 +31,7 @@ import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient.OpenAi
 import com.example.kxbackend.infra.ai.openai.OpenAiReferenceImageClient;
 import com.example.kxbackend.infra.storage.service.ImageUploadStorageService;
 import com.example.kxbackend.infra.storage.service.OpenAiGeneratedImageStorageService;
+import com.example.kxbackend.infra.storage.validation.UploadedImageFileValidator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +50,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -61,12 +62,8 @@ import java.util.UUID;
 public class OpenAiGenerateImageService {
 
     private static final int MAX_REFERENCE_IMAGE_COUNT = 8;
-    private static final Set<String> ALLOWED_REFERENCE_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp"
-    );
     private static final List<Status> PENDING_IMAGE_JOB_STATUSES = List.of(Status.SUBMITTED, Status.IN_PROGRESS);
+    private static final List<Status> ACTIVE_IMAGE_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
 
     private final OpenAiBatchClient openAiBatchClient;
     private final OpenAiImageBatchResultClient openAiImageBatchResultClient;
@@ -192,6 +189,22 @@ public class OpenAiGenerateImageService {
         GenerateJob imageJob = getOwnedImageJob(userId, jobId);
         OpenAiImageGenerateJobOption jobOption = openAiImageGenerateJobOptionRepository.findById(jobId).orElse(null);
         return buildResponse(imageJob, jobOption);
+    }
+
+    public List<OpenAiActiveImageJobResponseDto> getActiveImageJobs(Long userId) {
+        return openAiImageGenerateJobRepository
+                .findAllByUser_IdAndTypeAndStatusInOrderByCreatedAtDesc(
+                        userId,
+                        Type.TEXT_TO_IMAGE,
+                        ACTIVE_IMAGE_JOB_STATUSES
+                )
+                .stream()
+                .map(imageJob -> OpenAiActiveImageJobResponseDto.from(
+                        imageJob,
+                        openAiImageGenerateJobOptionRepository.findById(imageJob.getId()).orElse(null),
+                        openAiImageReferenceRepository.findAllByGenerateJob_IdOrderByReferenceOrderAsc(imageJob.getId())
+                ))
+                .toList();
     }
 
     /**
@@ -330,12 +343,7 @@ public class OpenAiGenerateImageService {
         }
 
         for (MultipartFile file : references) {
-            if (!ALLOWED_REFERENCE_CONTENT_TYPES.contains(file.getContentType())) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_INPUT_VALUE,
-                        "레퍼런스 이미지는 JPEG, PNG, WEBP 형식만 지원합니다."
-                );
-            }
+            UploadedImageFileValidator.validate(file, "레퍼런스 이미지");
         }
     }
 

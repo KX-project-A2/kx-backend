@@ -4,13 +4,13 @@ import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
 import com.example.kxbackend.infra.storage.ObjectStorage;
 import com.example.kxbackend.infra.storage.ObjectStorageKeys;
+import com.example.kxbackend.infra.storage.validation.UploadedImageFileValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -20,18 +20,10 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ImageUploadStorageService {
 
-    private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/gif"
-    );
-
     private static final Map<String, String> EXTENSION_BY_CONTENT_TYPE = Map.of(
             "image/jpeg", "jpg",
             "image/png", "png",
-            "image/webp", "webp",
-            "image/gif", "gif"
+            "image/webp", "webp"
     );
 
     private final ObjectStorage objectStorage;
@@ -55,7 +47,7 @@ public class ImageUploadStorageService {
     }
 
     private String uploadImage(Long userId, MultipartFile file, ImageObjectKeyType objectKeyType) {
-        validateImageFile(file);
+        UploadedImageFileValidator.validate(file, "이미지");
 
         try {
             String extension = resolveExtension(file);
@@ -66,17 +58,6 @@ public class ImageUploadStorageService {
             return objectKey;
         } catch (IOException exception) {
             throw new BusinessException(ErrorCode.INTERNAL_SERVER_ERROR, "이미지 파일 업로드에 실패했습니다.");
-        }
-    }
-
-    private void validateImageFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "업로드할 이미지 파일이 없습니다.");
-        }
-
-        String contentType = file.getContentType();
-        if (contentType == null || !ALLOWED_CONTENT_TYPES.contains(contentType)) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE, "지원하지 않는 이미지 형식입니다.");
         }
     }
 

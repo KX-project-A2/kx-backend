@@ -2,6 +2,7 @@ package com.example.kxbackend.domain.generate.controller;
 
 import com.example.kxbackend.domain.generate.dto.request.CharacterConceptSheetRequestDto;
 import com.example.kxbackend.domain.generate.dto.request.OpenAiGenerateImageRequestDto;
+import com.example.kxbackend.domain.generate.dto.response.OpenAiActiveImageJobResponseDto;
 import com.example.kxbackend.domain.generate.dto.response.OpenAiGenerateImageJobResponseDto;
 import com.example.kxbackend.domain.generate.service.OpenAiGenerateImageService;
 import com.example.kxbackend.global.response.ApiResponse;
@@ -76,6 +77,18 @@ public class OpenAiGenerateImageController {
     ) {
         OpenAiGenerateImageJobResponseDto response =
                 openAiGenerateImageService.getImageJob(principal.getId(), jobId);
+        return ApiResponse.success(response);
+    }
+
+    /**
+     * 진행 중인 이미지 생성 작업 목록을 조회한다.
+     */
+    @GetMapping("/jobs/active")
+    public ApiResponse<List<OpenAiActiveImageJobResponseDto>> getActiveImageJobs(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        List<OpenAiActiveImageJobResponseDto> response =
+                openAiGenerateImageService.getActiveImageJobs(principal.getId());
         return ApiResponse.success(response);
     }
 }
