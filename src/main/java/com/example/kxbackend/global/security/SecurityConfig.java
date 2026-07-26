@@ -41,6 +41,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/reissue",
                                 "/api/auth/logout",
+                                "/api/auth/password/**",
                                 "/oauth2/**",
                                 "/login/oauth2/**",
                                 "/api/generate/webhooks/fal",

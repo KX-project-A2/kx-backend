@@ -84,4 +84,8 @@ public class User {
     public void deleteProfileImage() {
         this.profileImagePath = null;
     }
+
+    public void changePassword(String encodedPassword) {
+        this.password = encodedPassword;
+    }
 }

@@ -96,3 +96,14 @@ app:
     same-site: ${AUTH_COOKIE_SAME_SITE:Lax}
   cors:
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  password-reset:
+    frontend-url: ${PASSWORD_RESET_FRONTEND_URL:http://localhost:3000/reset-password}
+    token-expiration-ms: ${PASSWORD_RESET_TOKEN_EXPIRATION_MS:3600000}
+
+aws:
+  ses:
+    enabled: ${AWS_SES_ENABLED:false}
+    region: ${AWS_SES_REGION:${AWS_S3_REGION:ap-northeast-2}}
+    from-email: ${AWS_SES_FROM_EMAIL:}
+    access-key: ${AWS_ACCESS_KEY_ID:}
+    secret-key: ${AWS_SECRET_ACCESS_KEY:}

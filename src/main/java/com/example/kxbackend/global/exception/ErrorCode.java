@@ -22,6 +22,9 @@ public enum ErrorCode {
     INVALID_CREDENTIALS(HttpStatus.UNAUTHORIZED, "AUTH_004", "이메일 또는 비밀번호가 올바르지 않습니다."),
     OAUTH_EMAIL_ALREADY_EXISTS(HttpStatus.CONFLICT, "AUTH_005", "이미 일반 회원가입으로 가입된 이메일입니다."),
     INVALID_OAUTH2_USER(HttpStatus.UNAUTHORIZED, "AUTH_006", "OAuth 사용자 정보를 확인할 수 없습니다."),
+    INVALID_PASSWORD_RESET_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_007", "유효하지 않은 비밀번호 재설정 토큰입니다."),
+    EXPIRED_PASSWORD_RESET_TOKEN(HttpStatus.BAD_REQUEST, "AUTH_008", "만료된 비밀번호 재설정 토큰입니다."),
+    EMAIL_SEND_FAILED(HttpStatus.BAD_GATEWAY, "AUTH_009", "이메일 발송에 실패했습니다."),
 
     // ========== GENERATE (생성) ==========
     AI_PROVIDER_ERROR(HttpStatus.BAD_GATEWAY, "GENERATE_001", "AI 생성 API 호출에 실패했습니다.");
