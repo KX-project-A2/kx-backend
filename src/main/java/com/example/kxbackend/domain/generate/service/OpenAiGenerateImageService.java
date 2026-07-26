@@ -30,6 +30,7 @@ import com.example.kxbackend.infra.ai.openai.OpenAiImageBatchResultClient.OpenAi
 import com.example.kxbackend.infra.ai.openai.OpenAiReferenceImageClient;
 import com.example.kxbackend.infra.storage.service.ImageUploadStorageService;
 import com.example.kxbackend.infra.storage.service.OpenAiGeneratedImageStorageService;
+import com.example.kxbackend.infra.storage.validation.UploadedImageFileValidator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +49,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -61,11 +61,6 @@ import java.util.UUID;
 public class OpenAiGenerateImageService {
 
     private static final int MAX_REFERENCE_IMAGE_COUNT = 8;
-    private static final Set<String> ALLOWED_REFERENCE_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp"
-    );
     private static final List<Status> PENDING_IMAGE_JOB_STATUSES = List.of(Status.SUBMITTED, Status.IN_PROGRESS);
 
     private final OpenAiBatchClient openAiBatchClient;
@@ -330,12 +325,7 @@ public class OpenAiGenerateImageService {
         }
 
         for (MultipartFile file : references) {
-            if (!ALLOWED_REFERENCE_CONTENT_TYPES.contains(file.getContentType())) {
-                throw new BusinessException(
-                        ErrorCode.INVALID_INPUT_VALUE,
-                        "레퍼런스 이미지는 JPEG, PNG, WEBP 형식만 지원합니다."
-                );
-            }
+            UploadedImageFileValidator.validate(file, "레퍼런스 이미지");
         }
     }
 
