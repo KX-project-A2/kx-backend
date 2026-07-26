@@ -14,13 +14,13 @@ import com.example.kxbackend.global.exception.ErrorCode;
 import com.example.kxbackend.infra.ai.anthropic.ClaudeReversePromptClient;
 import com.example.kxbackend.infra.storage.service.MediaImageDownloadStorageService;
 import com.example.kxbackend.infra.storage.service.MediaImageDownloadStorageService.DownloadedMediaFile;
+import com.example.kxbackend.infra.storage.validation.UploadedImageFileValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.Set;
 
 /**
  * 이미지 역프롬프트 추출 비즈니스 로직
@@ -29,13 +29,6 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ReversePromptService {
-
-    private static final Set<String> ALLOWED_IMAGE_CONTENT_TYPES = Set.of(
-            "image/jpeg",
-            "image/png",
-            "image/webp",
-            "image/gif"
-    );
 
     private final ClaudeReversePromptClient claudeReversePromptClient;
     private final ReversePromptRepository reversePromptRepository;
@@ -106,15 +99,10 @@ public class ReversePromptService {
         if (imageFile == null || imageFile.isEmpty()) {
             throw new BusinessException(
                     ErrorCode.INVALID_INPUT_VALUE,
-                    "역프롬프트 추출할 이미지를 선택하거나 mediaFileId를 지정해야 합니다."
+                "역프롬프트 추출할 이미지를 선택하거나 mediaFileId를 지정해야 합니다."
             );
         }
-        if (!ALLOWED_IMAGE_CONTENT_TYPES.contains(imageFile.getContentType())) {
-            throw new BusinessException(
-                    ErrorCode.INVALID_INPUT_VALUE,
-                    "이미지는 JPEG, PNG, WEBP, GIF 형식만 지원합니다."
-            );
-        }
+        UploadedImageFileValidator.validate(imageFile, "역프롬프트 이미지");
         try {
             return new ImageSource(imageFile.getBytes(), imageFile.getContentType(), null);
         } catch (IOException exception) {

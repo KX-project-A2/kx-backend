@@ -78,4 +78,16 @@ public class OpenAiGenerateImageController {
                 openAiGenerateImageService.getImageJob(principal.getId(), jobId);
         return ApiResponse.success(response);
     }
+
+    /**
+     * 진행 중인 이미지 생성 작업 목록을 조회한다.
+     */
+    @GetMapping("/jobs/active")
+    public ApiResponse<List<OpenAiGenerateImageJobResponseDto>> getActiveImageJobs(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        List<OpenAiGenerateImageJobResponseDto> response =
+                openAiGenerateImageService.getActiveImageJobs(principal.getId());
+        return ApiResponse.success(response);
+    }
 }

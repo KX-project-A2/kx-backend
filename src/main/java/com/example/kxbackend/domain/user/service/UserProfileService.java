@@ -158,6 +158,7 @@ public class UserProfileService {
             update("delete from share_link where media_file_id in (:mediaFileIds)", mediaParams);
             update("delete from media_favorite where user_id = :userId or media_file_id in (:mediaFileIds)",
                     mediaParams.addValue("userId", userId));
+            update("delete from generate_job_reference_media where media_file_id in (:mediaFileIds)", mediaParams);
             update("delete from openai_image_reference where media_file_id in (:mediaFileIds)", mediaParams);
             update("update generate_job set input_media_file_id = null where input_media_file_id in (:mediaFileIds)",
                     mediaParams);
@@ -169,6 +170,7 @@ public class UserProfileService {
 
         if (!generateJobIds.isEmpty()) {
             MapSqlParameterSource jobParams = new MapSqlParameterSource("generateJobIds", generateJobIds);
+            update("delete from generate_job_reference_media where generate_job_id in (:generateJobIds)", jobParams);
             update("delete from openai_image_reference where generate_job_id in (:generateJobIds)", jobParams);
             update("delete from openai_image_generate_job_option where generate_job_id in (:generateJobIds)", jobParams);
             update("delete from generate_prompt where generate_job_id in (:generateJobIds)", jobParams);

@@ -11,10 +11,17 @@ import org.springframework.data.repository.query.Param;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import com.example.kxbackend.domain.generate.entity.enums.Type;
 
 public interface GenerateJobRepository extends JpaRepository<GenerateJob, Long> {
 
     Optional<GenerateJob> findByFalRequestId(String falRequestId);
+
+    List<GenerateJob> findAllByUser_IdAndTypeAndStatusInOrderByCreatedAtDesc(
+            Long userId,
+            Type type,
+            Collection<Status> statuses
+    );
 
     @Query("""
             select distinct job
