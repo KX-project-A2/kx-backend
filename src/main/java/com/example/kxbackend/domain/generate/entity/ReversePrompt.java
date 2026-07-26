@@ -62,4 +62,12 @@ public class ReversePrompt {
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
     }
+
+    public void updatePrompt(String prompt) {
+        this.prompt = prompt;
+    }
+
+    public void updateAspectRatio(String aspectRatio) {
+        this.aspectRatio = aspectRatio;
+    }
 }

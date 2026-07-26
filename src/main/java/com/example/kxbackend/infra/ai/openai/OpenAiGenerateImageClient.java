@@ -3,7 +3,6 @@ package com.example.kxbackend.infra.ai.openai;
 import com.example.kxbackend.global.exception.BusinessException;
 import com.example.kxbackend.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -30,7 +29,7 @@ import java.util.Map;
 public class OpenAiGenerateImageClient {
 
     private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    private final OpenAiImageErrorMessageResolver openAiImageErrorMessageResolver;
 
     @Value("${openai.api-key}")
     private String apiKey;
@@ -96,16 +95,22 @@ public class OpenAiGenerateImageClient {
         } catch (HttpStatusCodeException exception) {
             throw new BusinessException(
                     ErrorCode.AI_PROVIDER_ERROR,
-                    "OpenAI 이미지 생성에 실패했습니다: " + extractApiError(exception.getResponseBodyAsString())
+                    openAiImageErrorMessageResolver.resolve(exception.getResponseBodyAsString())
             );
         } catch (RestClientException exception) {
-            throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR, "OpenAI 이미지 생성 요청에 실패했습니다.");
+            throw new BusinessException(
+                    ErrorCode.AI_PROVIDER_ERROR,
+                    "이미지 생성 서버와 연결하지 못했습니다. 잠시 후 다시 시도해 주세요."
+            );
         }
     }
 
     private List<byte[]> extractImages(JsonNode responseBody) {
         if (responseBody == null || !responseBody.path("data").isArray()) {
-            throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR, "OpenAI 이미지 생성 응답이 올바르지 않습니다.");
+            throw new BusinessException(
+                    ErrorCode.AI_PROVIDER_ERROR,
+                    "이미지 생성 응답이 올바르지 않습니다. 잠시 후 다시 시도해 주세요."
+            );
         }
 
         List<byte[]> images = new ArrayList<>();
@@ -126,17 +131,11 @@ public class OpenAiGenerateImageClient {
         }
 
         if (images.isEmpty()) {
-            throw new BusinessException(ErrorCode.AI_PROVIDER_ERROR, "OpenAI 응답에 생성된 이미지가 없습니다.");
+            throw new BusinessException(
+                    ErrorCode.AI_PROVIDER_ERROR,
+                    "생성된 이미지를 받지 못했습니다. 잠시 후 다시 시도해 주세요."
+            );
         }
         return List.copyOf(images);
-    }
-
-    private String extractApiError(String responseBody) {
-        try {
-            String message = objectMapper.readTree(responseBody).path("error").path("message").asText();
-            return message.isBlank() ? "알 수 없는 오류" : message;
-        } catch (Exception exception) {
-            return "알 수 없는 오류";
-        }
     }
 }
