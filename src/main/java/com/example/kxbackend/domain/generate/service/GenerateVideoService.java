@@ -3,6 +3,7 @@ package com.example.kxbackend.domain.generate.service;
 import com.example.kxbackend.domain.generate.client.VideoGenerationClient;
 import com.example.kxbackend.domain.generate.client.VideoGenerationClientException;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationCommand;
+import com.example.kxbackend.domain.generate.client.dto.VideoGenerationResult;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationStatusResult;
 import com.example.kxbackend.domain.generate.client.dto.VideoGenerationSubmitResult;
 import com.example.kxbackend.domain.generate.dto.request.FalWebhookRequestDto;
@@ -32,10 +33,13 @@ import com.example.kxbackend.infra.storage.s3.S3PresignedUrlService;
 import com.example.kxbackend.infra.storage.service.FalGeneratedVideoStorageService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -53,6 +57,7 @@ public class GenerateVideoService {
     private static final int SEEDANCE_MAX_REFERENCE_IMAGE_COUNT = 9;
     private static final String DEFAULT_DURATION = "5";
     private static final String DEFAULT_ASPECT_RATIO = "16:9";
+    private static final List<Status> PENDING_VIDEO_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
     private static final List<Status> ACTIVE_VIDEO_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
     private static final Pattern STATUS_CODE_PATTERN = Pattern.compile("(?i)status code:?\\s*(\\d{3})");
 
@@ -64,6 +69,9 @@ public class GenerateVideoService {
     private final FalGeneratedVideoStorageService falGeneratedVideoStorageService;
     private final S3PresignedUrlService s3PresignedUrlService;
     private final FalProperties falProperties;
+
+    @Value("${fal.video.created-timeout-minutes:10}")
+    private long videoCreatedTimeoutMinutes;
 
     /**
      * 요청 DTO 기반 이미지-영상 생성 작업 생성
@@ -163,8 +171,7 @@ public class GenerateVideoService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "영상 생성 작업을 찾을 수 없습니다.");
         }
 
-        VideoGenerationStatusResult falStatus = getFalStatus(generateJob);
-        syncVideoProgressStatus(generateJob, falStatus);
+        VideoGenerationStatusResult falStatus = syncPendingVideoJob(generateJob, true);
         MediaFile resultMediaFile = findRepresentativeResultMediaFile(generateJob.getId());
         return GenerateJobStatusResponseDto.from(generateJob, falStatus, resultMediaFile);
     }
@@ -192,6 +199,36 @@ public class GenerateVideoService {
                                 .findAllByGenerateJob_IdOrderByReferenceTypeAscReferenceOrderAsc(generateJob.getId())
                 ))
                 .toList();
+    }
+
+    /**
+     * webhook 누락 또는 사용자의 상태 조회 중단으로 남은 fal 영상 작업을 보정한다.
+     */
+    @Scheduled(fixedDelayString = "${fal.video.poll-interval-ms:300000}")
+    @Transactional
+    public void checkPendingVideoGenerationJobs() {
+        List<GenerateJob> pendingVideoJobs = generateJobRepository
+                .findAllByStatusInAndType(PENDING_VIDEO_JOB_STATUSES, Type.IMAGE_TO_VIDEO);
+
+        if (pendingVideoJobs.isEmpty()) {
+            return;
+        }
+
+        log.info("진행 중인 fal.ai 영상 생성 작업 {}건 상태 확인 시작", pendingVideoJobs.size());
+
+        for (GenerateJob videoJob : pendingVideoJobs) {
+            try {
+                syncPendingVideoJob(videoJob, false);
+            } catch (Exception exception) {
+                log.error(
+                        "fal.ai 영상 생성 작업 동기화 실패. jobId={}, requestId={}, modelId={}",
+                        videoJob.getId(),
+                        videoJob.getFalRequestId(),
+                        videoJob.getFalModelId(),
+                        exception
+                );
+            }
+        }
     }
 
     /**
@@ -594,16 +631,67 @@ public class GenerateVideoService {
         return type == null ? null : Objects.toString(type, null);
     }
 
-    private void syncVideoProgressStatus(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
-        if (falStatus == null || generateJob.getStatus() != Status.SUBMITTED) {
-            return;
+    private VideoGenerationStatusResult syncPendingVideoJob(GenerateJob generateJob, boolean withLogs) {
+        if (generateJob.getStatus() == Status.COMPLETED
+                || generateJob.getStatus() == Status.FAILED
+                || generateJob.getStatus() == Status.CANCELED) {
+            return null;
         }
-        if ("IN_PROGRESS".equalsIgnoreCase(falStatus.status())) {
+
+        if (!hasFalRequestInfo(generateJob)) {
+            failStaleCreatedVideoJob(generateJob);
+            return null;
+        }
+
+        VideoGenerationStatusResult falStatus = getFalStatus(generateJob, withLogs);
+        if (falStatus == null) {
+            return null;
+        }
+
+        if (isCompletedStatus(falStatus.status())) {
+            completeVideoJobFromFalResult(generateJob, falStatus);
+            return falStatus;
+        }
+
+        if (isFailureStatus(falStatus.status()) || StringUtils.hasText(falStatus.error())) {
+            generateJob.fail(resolveFalStatusErrorMessage(falStatus));
+            return falStatus;
+        }
+
+        if ("IN_PROGRESS".equalsIgnoreCase(falStatus.status()) && generateJob.getStatus() == Status.SUBMITTED) {
             generateJob.progress();
         }
+
+        return falStatus;
     }
 
-    private VideoGenerationStatusResult getFalStatus(GenerateJob generateJob) {
+    private boolean hasFalRequestInfo(GenerateJob generateJob) {
+        return StringUtils.hasText(generateJob.getFalModelId())
+                && StringUtils.hasText(generateJob.getFalRequestId());
+    }
+
+    private void failStaleCreatedVideoJob(GenerateJob generateJob) {
+        if (generateJob.getStatus() != Status.CREATED || generateJob.getCreatedAt() == null) {
+            return;
+        }
+        LocalDateTime timeoutThreshold = LocalDateTime.now().minusMinutes(videoCreatedTimeoutMinutes);
+        if (generateJob.getCreatedAt().isAfter(timeoutThreshold)) {
+            return;
+        }
+        generateJob.fail("fal.ai 영상 생성 요청 정보가 없어 작업을 종료했습니다.");
+    }
+
+    private void completeVideoJobFromFalResult(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
+        VideoGenerationResult result = getFalResult(generateJob, falStatus);
+        String videoUrl = result == null ? null : extractVideoUrl(result.payload());
+        if (!StringUtils.hasText(videoUrl)) {
+            generateJob.fail("fal.ai 완료 결과에서 영상 URL을 찾을 수 없습니다.");
+            return;
+        }
+        completeVideoJob(generateJob, videoUrl);
+    }
+
+    private VideoGenerationStatusResult getFalStatus(GenerateJob generateJob, boolean withLogs) {
         if (!StringUtils.hasText(generateJob.getFalModelId()) || !StringUtils.hasText(generateJob.getFalRequestId())) {
             return null;
         }
@@ -614,7 +702,7 @@ public class GenerateVideoService {
         }
         if (StringUtils.hasText(generateJob.getFalStatusUrl())) {
             try {
-                return videoGenerationClient.getStatusByUrl(generateJob.getFalStatusUrl(), true);
+                return videoGenerationClient.getStatusByUrl(generateJob.getFalStatusUrl(), withLogs);
             } catch (VideoGenerationClientException exception) {
                 throw new BusinessException(
                         ErrorCode.AI_PROVIDER_ERROR,
@@ -623,13 +711,55 @@ public class GenerateVideoService {
             }
         }
         try {
-            return videoGenerationClient.getStatus(generateJob.getFalModelId(), generateJob.getFalRequestId(), true);
+            return videoGenerationClient.getStatus(generateJob.getFalModelId(), generateJob.getFalRequestId(), withLogs);
         } catch (VideoGenerationClientException exception) {
             throw new BusinessException(
                     ErrorCode.AI_PROVIDER_ERROR,
                     buildFalClientErrorMessage("fal.ai status 조회 실패", exception)
             );
         }
+    }
+
+    private VideoGenerationResult getFalResult(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
+        if (StringUtils.hasText(falStatus.responseUrl())) {
+            try {
+                return videoGenerationClient.getResultByUrl(falStatus.responseUrl());
+            } catch (VideoGenerationClientException exception) {
+                throw new BusinessException(
+                        ErrorCode.AI_PROVIDER_ERROR,
+                        buildFalClientErrorMessage("fal.ai result 조회 실패", exception)
+                );
+            }
+        }
+        if (StringUtils.hasText(generateJob.getFalResponseUrl())) {
+            try {
+                return videoGenerationClient.getResultByUrl(generateJob.getFalResponseUrl());
+            } catch (VideoGenerationClientException exception) {
+                throw new BusinessException(
+                        ErrorCode.AI_PROVIDER_ERROR,
+                        buildFalClientErrorMessage("fal.ai result 조회 실패", exception)
+                );
+            }
+        }
+        try {
+            return videoGenerationClient.getResult(generateJob.getFalModelId(), generateJob.getFalRequestId());
+        } catch (VideoGenerationClientException exception) {
+            throw new BusinessException(
+                    ErrorCode.AI_PROVIDER_ERROR,
+                    buildFalClientErrorMessage("fal.ai result 조회 실패", exception)
+            );
+        }
+    }
+
+    private boolean isCompletedStatus(String status) {
+        return "COMPLETED".equalsIgnoreCase(status);
+    }
+
+    private String resolveFalStatusErrorMessage(VideoGenerationStatusResult falStatus) {
+        if (StringUtils.hasText(falStatus.error())) {
+            return FalErrorMessageMapper.toUserMessage(falStatus.errorType(), falStatus.error(), null);
+        }
+        return falStatus.status();
     }
 
     private String buildFalClientErrorMessage(String prefix, VideoGenerationClientException exception) {
@@ -640,6 +770,9 @@ public class GenerateVideoService {
     }
 
     private void completeVideoJob(GenerateJob generateJob, String videoUrl) {
+        if (generateJob.getStatus() == Status.COMPLETED) {
+            return;
+        }
         String savedVideoPath = falGeneratedVideoStorageService.saveGeneratedVideo(
                 generateJob.getUser().getId(),
                 videoUrl

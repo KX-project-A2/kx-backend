@@ -17,6 +17,8 @@ public interface GenerateJobRepository extends JpaRepository<GenerateJob, Long> 
 
     Optional<GenerateJob> findByFalRequestId(String falRequestId);
 
+    List<GenerateJob> findAllByStatusInAndType(Collection<Status> statuses, Type type);
+
     List<GenerateJob> findAllByUser_IdAndTypeAndStatusInOrderByCreatedAtDesc(
             Long userId,
             Type type,

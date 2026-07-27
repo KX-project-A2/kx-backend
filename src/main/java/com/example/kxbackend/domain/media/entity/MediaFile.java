@@ -45,6 +45,9 @@ public class MediaFile {
     @Column(length = 50)
     private String resolution;
 
+    @Column(length = 20)
+    private String duration;
+
     /**
      * 이미지 생성 목적(캐릭터/배경). 업로드·영상 등은 null.
      */
