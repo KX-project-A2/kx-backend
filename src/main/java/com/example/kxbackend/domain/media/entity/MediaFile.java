@@ -3,6 +3,7 @@ package com.example.kxbackend.domain.media.entity;
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.GeneratePrompt;
 import com.example.kxbackend.domain.generate.entity.ReversePrompt;
+import com.example.kxbackend.domain.generate.entity.enums.ImageGenerationPurpose;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
 import com.example.kxbackend.domain.user.entity.User;
 import jakarta.persistence.*;
@@ -44,8 +45,12 @@ public class MediaFile {
     @Column(length = 50)
     private String resolution;
 
+    /**
+     * 이미지 생성 목적(캐릭터/배경). 업로드·영상 등은 null.
+     */
+    @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private String duration;
+    private ImageGenerationPurpose purpose;
 
     /**
      * 이 미디어에서 추출한 최신 역프롬프트

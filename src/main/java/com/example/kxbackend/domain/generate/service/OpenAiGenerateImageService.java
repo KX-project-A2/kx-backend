@@ -289,6 +289,7 @@ public class OpenAiGenerateImageService {
                     .model(imageModel)
                     .quality(jobOption != null ? jobOption.getQuality() : null)
                     .resolution(jobOption != null ? jobOption.getSize() : null)
+                    .purpose(jobOption != null ? jobOption.getPurpose() : null)
                     .tags("openai")
                     .build();
             mediaFile.connectGeneration(imageJob, prompt);
