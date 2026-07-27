@@ -1,5 +1,6 @@
 package com.example.kxbackend.domain.media.dto.response;
 
+import com.example.kxbackend.domain.generate.entity.enums.ImageGenerationPurpose;
 import com.example.kxbackend.domain.media.entity.MediaFile;
 import com.example.kxbackend.domain.media.entity.enums.MediaType;
 
@@ -14,7 +15,7 @@ public record MediaFileResponseDto(
         String quality,
         String aspectRatio,
         String resolution,
-        String duration,
+        ImageGenerationPurpose purpose,
         Long reversedPromptId,
         String tags,
         Long generateJobId,
@@ -37,7 +38,7 @@ public record MediaFileResponseDto(
                 mediaFile.getQuality(),
                 mediaFile.getAspectRatio(),
                 mediaFile.getResolution(),
-                mediaFile.getDuration(),
+                mediaFile.getPurpose(),
                 mediaFile.getReversedPrompt() == null ? null : mediaFile.getReversedPrompt().getId(),
                 mediaFile.getTags(),
                 mediaFile.getGenerateJob() == null ? null : mediaFile.getGenerateJob().getId(),
