@@ -22,7 +22,7 @@ public record ReversePromptGenerateRequestDto(
          * 미입력 시 역프롬프트에 저장된 aspectRatio를 size로 변환해 사용한다.
          */
         @Pattern(
-                regexp = "^(auto|1024x1024|1536x1024|1024x1536)$",
+                regexp = "^(auto|1024x1024|1536x864|864x1536)$",
                 message = "지원하지 않는 이미지 크기입니다."
         )
         String size,

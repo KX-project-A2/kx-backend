@@ -86,7 +86,7 @@ public class OpenAiGenerateImageService {
     @Value("${openai.image.size:auto}")
     private String defaultImageSize;
 
-    @Value("${openai.image.character-sheet.size:1536x1024}")
+    @Value("${openai.image.character-sheet.size:1536x864}")
     private String defaultCharacterSheetSize;
 
     @Value("${openai.image.quality:standard}")
