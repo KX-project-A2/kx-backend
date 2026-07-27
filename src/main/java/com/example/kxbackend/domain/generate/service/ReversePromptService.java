@@ -150,8 +150,8 @@ public class ReversePromptService {
     private String toImageSize(String aspectRatio) {
         return switch (aspectRatio) {
             case "1:1" -> "1024x1024";
-            case "16:9" -> "1536x1024";
-            case "9:16" -> "1024x1536";
+            case "16:9" -> "1536x864";
+            case "9:16" -> "864x1536";
             default -> "auto";
         };
     }

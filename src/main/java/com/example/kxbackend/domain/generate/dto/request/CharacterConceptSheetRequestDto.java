@@ -65,10 +65,10 @@ public record CharacterConceptSheetRequestDto(
 
         /**
          * 이미지 비율/크기.
-         * Auto는 null 또는 "auto"로 전달하면 설정표 기본값(1536x1024)을 사용한다.
+         * Auto는 null 또는 "auto"로 전달하면 설정표 기본값(1536x864, 16:9)을 사용한다.
          */
         @Pattern(
-                regexp = "^(auto|1024x1024|1536x1024|1024x1536)$",
+                regexp = "^(auto|1024x1024|1536x864|864x1536)$",
                 message = "지원하지 않는 이미지 크기입니다."
         )
         String size,
