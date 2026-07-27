@@ -227,6 +227,7 @@ public class GenerateVideoService {
                 .requestQuality(getOptionValue(resolvedOptions, "quality"))
                 .requestAspectRatio(resolveRequestAspectRatio(resolvedOptions))
                 .requestResolution(getOptionValue(resolvedOptions, "resolution"))
+                .requestDuration(resolveRequestDuration(resolvedOptions))
                 .build();
         generateJob.addPrompt(PromptKind.SCENE, 1, promptContent);
 
@@ -280,6 +281,42 @@ public class GenerateVideoService {
     private String resolveRequestAspectRatio(Map<String, Object> options) {
         String aspectRatio = getOptionValue(options, "aspect_ratio");
         return StringUtils.hasText(aspectRatio) ? aspectRatio : DEFAULT_ASPECT_RATIO;
+    }
+
+    private String resolveRequestDuration(Map<String, Object> options) {
+        Integer multiPromptDuration = resolveMultiPromptDuration(options);
+        if (multiPromptDuration != null) {
+            return multiPromptDuration.toString();
+        }
+        String duration = getOptionValue(options, "duration");
+        if (StringUtils.hasText(duration)) {
+            return duration;
+        }
+        return null;
+    }
+
+    private Integer resolveMultiPromptDuration(Map<String, Object> options) {
+        if (options == null) {
+            return null;
+        }
+        Object multiPrompt = options.get("multi_prompt");
+        if (!(multiPrompt instanceof List<?> shots)) {
+            return null;
+        }
+        int totalDuration = 0;
+        boolean hasDuration = false;
+        for (Object item : shots) {
+            if (!(item instanceof Map<?, ?> shot)) {
+                continue;
+            }
+            Object value = shot.get("duration");
+            if (value == null) {
+                continue;
+            }
+            totalDuration += Integer.parseInt(Objects.toString(value));
+            hasDuration = true;
+        }
+        return hasDuration ? totalDuration : null;
     }
 
     /**
@@ -620,6 +657,7 @@ public class GenerateVideoService {
                 .quality(generateJob.getRequestQuality())
                 .aspectRatio(generateJob.getRequestAspectRatio())
                 .resolution(generateJob.getRequestResolution())
+                .duration(generateJob.getRequestDuration())
                 .tags("fal.ai")
                 .build();
         resultMediaFile.connectGeneration(generateJob, prompt);

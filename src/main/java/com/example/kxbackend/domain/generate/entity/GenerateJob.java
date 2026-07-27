@@ -56,6 +56,9 @@ public class GenerateJob {
     @Column(name = "request_resolution", length = 50)
     private String requestResolution;
 
+    @Column(name = "request_duration", length = 20)
+    private String requestDuration;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "input_media_file_id")
     private MediaFile inputMediaFile;

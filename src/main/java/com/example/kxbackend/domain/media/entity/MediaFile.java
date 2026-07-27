@@ -44,6 +44,9 @@ public class MediaFile {
     @Column(length = 50)
     private String resolution;
 
+    @Column(length = 20)
+    private String duration;
+
     /**
      * 이 미디어에서 추출한 최신 역프롬프트
      */
