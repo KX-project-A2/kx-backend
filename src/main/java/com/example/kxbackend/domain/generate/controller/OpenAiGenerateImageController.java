@@ -15,7 +15,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -55,15 +54,21 @@ public class OpenAiGenerateImageController {
 
     /**
      * 구조화된 캐릭터 데이터로 공식 캐릭터 설정표(Concept Art Sheet) 생성을 요청한다.
+     * 레퍼런스 이미지는 0~8장까지 첨부할 수 있다.
      */
     @ResponseStatus(HttpStatus.ACCEPTED)
-    @PostMapping("/character-concept-sheet")
+    @PostMapping(value = "/character-concept-sheet", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<OpenAiGenerateImageJobResponseDto> requestCharacterConceptSheet(
             @AuthenticationPrincipal UserPrincipal principal,
-            @Valid @RequestBody CharacterConceptSheetRequestDto request
+            @Valid @RequestPart("request") CharacterConceptSheetRequestDto request,
+            @RequestPart(value = "references", required = false) List<MultipartFile> references
     ) {
         OpenAiGenerateImageJobResponseDto response =
-                openAiGenerateImageService.requestCharacterConceptSheet(principal.getId(), request);
+                openAiGenerateImageService.requestCharacterConceptSheet(
+                        principal.getId(),
+                        request,
+                        references
+                );
         return ApiResponse.success("캐릭터 설정표 생성 요청이 접수되었습니다.", response);
     }
 
