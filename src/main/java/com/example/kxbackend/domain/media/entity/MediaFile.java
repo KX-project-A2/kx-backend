@@ -8,10 +8,19 @@ import com.example.kxbackend.domain.media.entity.enums.MediaType;
 import com.example.kxbackend.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.GeneratedColumn;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "media_file")
+@Table(
+        name = "media_file",
+        indexes = @Index(
+                name = "uk_video_result_media_per_job",
+                columnList = "video_result_generate_job_id",
+                unique = true
+        )
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -68,6 +77,16 @@ public class MediaFile {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "generate_job_id")
     private GenerateJob generateJob;
+
+    @GeneratedColumn("""
+            case
+                when type = 'VIDEO' and deleted = 0 and generate_job_id is not null
+                then generate_job_id
+                else null
+            end
+            """)
+    @Column(name = "video_result_generate_job_id", insertable = false, updatable = false)
+    private Long videoResultGenerateJobId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "generate_prompt_id")
