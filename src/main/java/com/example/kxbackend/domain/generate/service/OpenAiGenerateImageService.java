@@ -400,7 +400,7 @@ public class OpenAiGenerateImageService {
         if (purpose != ImageGenerationPurpose.CHARACTER) {
             return false;
         }
-        return multiViewEnabled == null || Boolean.TRUE.equals(multiViewEnabled);
+        return Boolean.TRUE.equals(multiViewEnabled);
     }
 
     private String appendReferenceInstructions(String prompt, int referenceCount) {
