@@ -106,6 +106,7 @@ public class OpenAiImageGenerationProcessor {
                     .quality(jobOption != null ? jobOption.getQuality() : null)
                     .resolution(jobOption != null ? jobOption.getSize() : null)
                     .purpose(jobOption != null ? jobOption.getPurpose() : null)
+                    .multiViewEnabled(jobOption != null ? jobOption.getMultiViewEnabled() : null)
                     .tags("openai")
                     .build();
             mediaFile.connectGeneration(imageJob, prompt);

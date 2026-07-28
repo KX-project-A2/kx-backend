@@ -33,6 +33,12 @@ public record OpenAiGenerateImageRequestDto(
         @Pattern(regexp = "^(standard|high)$", message = "quality는 standard, high 중 하나여야 합니다.")
         String quality,
 
-        Boolean promptCorrectionEnabled
+        Boolean promptCorrectionEnabled,
+
+        /**
+         * CHARACTER일 때 정면/측면/후면 다각도 배치 여부.
+         * null이면 true(기존 동작)로 처리한다. BACKGROUND에서는 무시된다.
+         */
+        Boolean multiViewEnabled
 ) {
 }

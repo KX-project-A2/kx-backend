@@ -49,12 +49,19 @@ public class OpenAiImageGenerateJobOption {
     @Column(name = "purposes", length = 50)
     private String purposes;
 
+    /**
+     * CHARACTER 다각도(정면/측면/후면) 배치 여부. BACKGROUND 등은 null.
+     */
+    @Column(name = "multi_view_enabled")
+    private Boolean multiViewEnabled;
+
     public static OpenAiImageGenerateJobOption of(
             GenerateJob generateJob,
             int imageCount,
             String size,
             String quality,
-            ImageGenerationPurpose purpose
+            ImageGenerationPurpose purpose,
+            Boolean multiViewEnabled
     ) {
         return OpenAiImageGenerateJobOption.builder()
                 .generateJob(generateJob)
@@ -62,6 +69,7 @@ public class OpenAiImageGenerateJobOption {
                 .size(size)
                 .quality(quality)
                 .purposes(purpose.name())
+                .multiViewEnabled(multiViewEnabled)
                 .build();
     }
 
@@ -71,5 +79,9 @@ public class OpenAiImageGenerateJobOption {
         }
         String first = purposes.split(",")[0].trim();
         return ImageGenerationPurpose.valueOf(first);
+    }
+
+    public boolean isMultiViewEnabled() {
+        return multiViewEnabled == null || Boolean.TRUE.equals(multiViewEnabled);
     }
 }
