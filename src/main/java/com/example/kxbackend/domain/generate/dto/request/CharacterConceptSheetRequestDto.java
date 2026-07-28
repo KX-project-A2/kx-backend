@@ -10,6 +10,7 @@ import java.util.List;
 /**
  * 공식 캐릭터 설정표(Concept Art Sheet) 생성 요청 Dto
  * UI 선택 속성(성별, 체형, 아트 스타일, 헤어, 의상 등)만 수신한다.
+ * 레퍼런스 이미지는 multipart part `references`로 별도 전달한다(0~8장).
  */
 public record CharacterConceptSheetRequestDto(
 

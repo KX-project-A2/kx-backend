@@ -124,22 +124,32 @@ public class OpenAiGenerateImageService {
 
     /**
      * 구조화된 캐릭터 데이터로 공식 캐릭터 설정표(Concept Art Sheet) 생성을 요청한다.
+     * 레퍼런스 이미지는 0~8장까지 첨부할 수 있다.
      */
     @Transactional
     public OpenAiGenerateImageJobResponseDto requestCharacterConceptSheet(
             Long userId,
-            CharacterConceptSheetRequestDto request
+            CharacterConceptSheetRequestDto request,
+            List<MultipartFile> referenceFiles
     ) {
+        List<MultipartFile> references = buildReferenceUploads(referenceFiles);
+        validateReferenceImages(references);
+
         String prompt = characterConceptArtPromptBuilder.build(request);
+        String generationPrompt = prompt;
+        if (!references.isEmpty()) {
+            generationPrompt = appendReferenceInstructions(generationPrompt, references.size());
+        }
+
         return submitImageGenerationJob(
                 userId,
                 prompt,
-                prompt,
+                generationPrompt,
                 resolveImageCount(request.imageCount()),
                 resolveCharacterSheetSize(request.size()),
                 resolveQuality(request.quality()),
                 ImageGenerationPurpose.CHARACTER,
-                List.of()
+                references
         );
     }
 
