@@ -34,7 +34,7 @@ public record ReversePromptGenerateRequestDto(
 
         /**
          * CHARACTER일 때 정면/측면/후면 다각도 배치 여부.
-         * null이면 true(기존 동작)로 처리한다.
+         * null이면 false로 처리한다.
          */
         Boolean multiViewEnabled
 ) {

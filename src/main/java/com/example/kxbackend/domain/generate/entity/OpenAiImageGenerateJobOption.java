@@ -82,6 +82,6 @@ public class OpenAiImageGenerateJobOption {
     }
 
     public boolean isMultiViewEnabled() {
-        return multiViewEnabled == null || Boolean.TRUE.equals(multiViewEnabled);
+        return Boolean.TRUE.equals(multiViewEnabled);
     }
 }
