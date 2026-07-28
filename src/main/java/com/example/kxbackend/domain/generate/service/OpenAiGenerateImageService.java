@@ -104,8 +104,9 @@ public class OpenAiGenerateImageService {
         List<MultipartFile> references = buildReferenceUploads(referenceFiles);
         validateReferenceImages(references);
         ImageGenerationPurpose purpose = request.purpose();
+        boolean multiViewEnabled = resolveMultiViewEnabled(purpose, request.multiViewEnabled());
         String prompt = resolvePrompt(request.prompt(), request.promptCorrectionEnabled());
-        String generationPrompt = appendPurposeInstructions(prompt, purpose);
+        String generationPrompt = appendPurposeInstructions(prompt, purpose, multiViewEnabled);
         if (!references.isEmpty()) {
             generationPrompt = appendReferenceInstructions(generationPrompt, references.size());
         }
@@ -118,6 +119,7 @@ public class OpenAiGenerateImageService {
                 resolveSize(request.size()),
                 resolveQuality(request.quality()),
                 purpose,
+                multiViewEnabled,
                 references
         );
     }
@@ -149,6 +151,7 @@ public class OpenAiGenerateImageService {
                 resolveCharacterSheetSize(request.size()),
                 resolveQuality(request.quality()),
                 ImageGenerationPurpose.CHARACTER,
+                null,
                 references
         );
     }
@@ -161,6 +164,7 @@ public class OpenAiGenerateImageService {
             String size,
             String quality,
             ImageGenerationPurpose purpose,
+            Boolean multiViewEnabled,
             List<MultipartFile> referenceUploads
     ) {
         User user = getUser(userId);
@@ -176,7 +180,7 @@ public class OpenAiGenerateImageService {
         List<OpenAiImageReference> references = saveReferenceImages(imageJob, user, referenceUploads);
 
         OpenAiImageGenerateJobOption jobOption =
-                OpenAiImageGenerateJobOption.of(imageJob, imageCount, size, quality, purpose);
+                OpenAiImageGenerateJobOption.of(imageJob, imageCount, size, quality, purpose, multiViewEnabled);
         openAiImageGenerateJobOptionRepository.save(jobOption);
 
         imageJob.startSynchronous();
@@ -300,6 +304,7 @@ public class OpenAiGenerateImageService {
                     .quality(jobOption != null ? jobOption.getQuality() : null)
                     .resolution(jobOption != null ? jobOption.getSize() : null)
                     .purpose(jobOption != null ? jobOption.getPurpose() : null)
+                    .multiViewEnabled(jobOption != null ? jobOption.getMultiViewEnabled() : null)
                     .tags("openai")
                     .build();
             mediaFile.connectGeneration(imageJob, prompt);
@@ -358,13 +363,27 @@ public class OpenAiGenerateImageService {
         }
     }
 
-    private String appendPurposeInstructions(String prompt, ImageGenerationPurpose purpose) {
+    private String appendPurposeInstructions(
+            String prompt,
+            ImageGenerationPurpose purpose,
+            boolean multiViewEnabled
+    ) {
         if (purpose == ImageGenerationPurpose.CHARACTER) {
+            if (multiViewEnabled) {
+                return prompt + """
+
+                        [IMAGE GENERATION PURPOSE: CHARACTER]
+                        Prioritize the character's identity, design, pose, expression, outfit, and visual consistency.
+                        Arrange front, side, and back views of the same character side by side in one image.
+                        Use a clean white or neutral studio background with no scenic backdrop and no cast shadows from the environment.
+                        Do not include any readable text, labels, logos, captions, UI, or watermarks in the image.
+                        """;
+            }
             return prompt + """
 
                     [IMAGE GENERATION PURPOSE: CHARACTER]
                     Prioritize the character's identity, design, pose, expression, outfit, and visual consistency.
-                    Arrange front, side, and back views of the same character side by side in one image.
+                    Generate a single clear character view (not a multi-angle turnaround sheet).
                     Use a clean white or neutral studio background with no scenic backdrop and no cast shadows from the environment.
                     Do not include any readable text, labels, logos, captions, UI, or watermarks in the image.
                     """;
@@ -375,6 +394,13 @@ public class OpenAiGenerateImageService {
                 Prioritize the environment, composition, architecture or landscape, atmosphere, lighting, and spatial depth.
                 Keep any characters secondary unless the user's prompt explicitly requires otherwise.
                 """;
+    }
+
+    private boolean resolveMultiViewEnabled(ImageGenerationPurpose purpose, Boolean multiViewEnabled) {
+        if (purpose != ImageGenerationPurpose.CHARACTER) {
+            return false;
+        }
+        return multiViewEnabled == null || Boolean.TRUE.equals(multiViewEnabled);
     }
 
     private String appendReferenceInstructions(String prompt, int referenceCount) {

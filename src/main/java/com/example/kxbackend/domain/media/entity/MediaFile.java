@@ -65,6 +65,12 @@ public class MediaFile {
     private ImageGenerationPurpose purpose;
 
     /**
+     * CHARACTER 다각도(정면/측면/후면) 배치 여부. 해당 없으면 null.
+     */
+    @Column(name = "multi_view_enabled")
+    private Boolean multiViewEnabled;
+
+    /**
      * 이 미디어에서 추출한 최신 역프롬프트
      */
     @ManyToOne(fetch = FetchType.LAZY)

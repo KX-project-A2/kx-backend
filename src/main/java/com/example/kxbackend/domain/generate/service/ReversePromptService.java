@@ -127,7 +127,8 @@ public class ReversePromptService {
                 request.imageCount(),
                 size,
                 request.quality(),
-                request.promptCorrectionEnabled()
+                request.promptCorrectionEnabled(),
+                request.multiViewEnabled()
         );
 
         return openAiGenerateImageService.requestImageGeneration(userId, generateRequest, List.of());

@@ -19,6 +19,7 @@ public record OpenAiActiveImageJobResponseDto(
         String size,
         String quality,
         ImageGenerationPurpose purpose,
+        Boolean multiViewEnabled,
         List<OpenAiReferenceImageResultDto> referenceImages,
         LocalDateTime createdAt,
         LocalDateTime submittedAt
@@ -38,6 +39,7 @@ public record OpenAiActiveImageJobResponseDto(
                 option != null ? option.getSize() : null,
                 option != null ? option.getQuality() : null,
                 option != null ? option.getPurpose() : ImageGenerationPurpose.CHARACTER,
+                option != null ? option.getMultiViewEnabled() : null,
                 references.stream()
                         .map(OpenAiReferenceImageResultDto::from)
                         .toList(),
