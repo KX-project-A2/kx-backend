@@ -60,6 +60,9 @@ public class GenerateVideoService {
     private static final List<Status> PENDING_VIDEO_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
     private static final List<Status> ACTIVE_VIDEO_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
     private static final Pattern STATUS_CODE_PATTERN = Pattern.compile("(?i)status code:?\\s*(\\d{3})");
+    private static final String SYNC_SOURCE_WEBHOOK = "WEBHOOK";
+    private static final String SYNC_SOURCE_STATUS_API = "STATUS_API";
+    private static final String SYNC_SOURCE_SCHEDULER = "SCHEDULER";
 
     private final GenerateJobRepository generateJobRepository;
     private final GenerateJobReferenceMediaRepository generateJobReferenceMediaRepository;
@@ -102,7 +105,9 @@ public class GenerateVideoService {
         GenerateJob generateJob = generateJobRepository.findByFalRequestId(request.requestId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "생성 작업을 찾을 수 없습니다."));
 
-        if (generateJob.getStatus() == Status.COMPLETED || generateJob.getStatus() == Status.FAILED) {
+        if (generateJob.getStatus() == Status.COMPLETED
+                || generateJob.getStatus() == Status.FAILED
+                || generateJob.getStatus() == Status.CANCELED) {
             return generateJob;
         }
 
@@ -138,7 +143,7 @@ public class GenerateVideoService {
             return generateJob;
         }
 
-        completeVideoJob(generateJob, videoUrl);
+        completeVideoJob(generateJob, videoUrl, SYNC_SOURCE_WEBHOOK);
         return generateJob;
     }
 
@@ -171,7 +176,7 @@ public class GenerateVideoService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "영상 생성 작업을 찾을 수 없습니다.");
         }
 
-        VideoGenerationStatusResult falStatus = syncPendingVideoJob(generateJob, true);
+        VideoGenerationStatusResult falStatus = syncPendingVideoJob(generateJob, true, SYNC_SOURCE_STATUS_API);
         MediaFile resultMediaFile = findRepresentativeResultMediaFile(generateJob.getId());
         return GenerateJobStatusResponseDto.from(generateJob, falStatus, resultMediaFile);
     }
@@ -218,7 +223,7 @@ public class GenerateVideoService {
 
         for (GenerateJob videoJob : pendingVideoJobs) {
             try {
-                syncPendingVideoJob(videoJob, false);
+                syncPendingVideoJob(videoJob, false, SYNC_SOURCE_SCHEDULER);
             } catch (Exception exception) {
                 log.error(
                         "fal.ai 영상 생성 작업 동기화 실패. jobId={}, requestId={}, modelId={}",
@@ -290,6 +295,21 @@ public class GenerateVideoService {
         savedJob.submit(
                 submitResult.requestId(),
                 resolvedModelId,
+                submitResult.statusUrl(),
+                submitResult.responseUrl()
+        );
+        log.info(
+                "fal.ai video job submitted. jobId={}, userId={}, requestId={}, modelId={}, duration={}, aspectRatio={}, resolution={}, startMediaFileId={}, endMediaFileId={}, referenceCount={}, statusUrl={}, responseUrl={}",
+                savedJob.getId(),
+                user.getId(),
+                submitResult.requestId(),
+                resolvedModelId,
+                savedJob.getRequestDuration(),
+                savedJob.getRequestAspectRatio(),
+                savedJob.getRequestResolution(),
+                startMediaFileId,
+                endMediaFileId,
+                referenceMediaFiles.size(),
                 submitResult.statusUrl(),
                 submitResult.responseUrl()
         );
@@ -631,7 +651,7 @@ public class GenerateVideoService {
         return type == null ? null : Objects.toString(type, null);
     }
 
-    private VideoGenerationStatusResult syncPendingVideoJob(GenerateJob generateJob, boolean withLogs) {
+    private VideoGenerationStatusResult syncPendingVideoJob(GenerateJob generateJob, boolean withLogs, String source) {
         if (generateJob.getStatus() == Status.COMPLETED
                 || generateJob.getStatus() == Status.FAILED
                 || generateJob.getStatus() == Status.CANCELED) {
@@ -649,11 +669,29 @@ public class GenerateVideoService {
         }
 
         if (isCompletedStatus(falStatus.status())) {
-            completeVideoJobFromFalResult(generateJob, falStatus);
+            log.info(
+                    "fal.ai video job completed remotely. source={}, jobId={}, requestId={}, modelId={}, responseUrl={}",
+                    source,
+                    generateJob.getId(),
+                    generateJob.getFalRequestId(),
+                    generateJob.getFalModelId(),
+                    falStatus.responseUrl()
+            );
+            completeVideoJobFromFalResult(generateJob, falStatus, source);
             return falStatus;
         }
 
         if (isFailureStatus(falStatus.status()) || StringUtils.hasText(falStatus.error())) {
+            log.warn(
+                    "fal.ai video job failed remotely. source={}, jobId={}, requestId={}, modelId={}, falStatus={}, errorType={}, error={}",
+                    source,
+                    generateJob.getId(),
+                    generateJob.getFalRequestId(),
+                    generateJob.getFalModelId(),
+                    falStatus.status(),
+                    falStatus.errorType(),
+                    falStatus.error()
+            );
             generateJob.fail(resolveFalStatusErrorMessage(falStatus));
             return falStatus;
         }
@@ -681,14 +719,14 @@ public class GenerateVideoService {
         generateJob.fail("fal.ai 영상 생성 요청 정보가 없어 작업을 종료했습니다.");
     }
 
-    private void completeVideoJobFromFalResult(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
+    private void completeVideoJobFromFalResult(GenerateJob generateJob, VideoGenerationStatusResult falStatus, String source) {
         VideoGenerationResult result = getFalResult(generateJob, falStatus);
         String videoUrl = result == null ? null : extractVideoUrl(result.payload());
         if (!StringUtils.hasText(videoUrl)) {
             generateJob.fail("fal.ai 완료 결과에서 영상 URL을 찾을 수 없습니다.");
             return;
         }
-        completeVideoJob(generateJob, videoUrl);
+        completeVideoJob(generateJob, videoUrl, source);
     }
 
     private VideoGenerationStatusResult getFalStatus(GenerateJob generateJob, boolean withLogs) {
@@ -769,34 +807,76 @@ public class GenerateVideoService {
         return prefix + ": HTTP " + exception.getStatusCode();
     }
 
-    private void completeVideoJob(GenerateJob generateJob, String videoUrl) {
-        if (generateJob.getStatus() == Status.COMPLETED) {
+    private void completeVideoJob(GenerateJob generateJob, String videoUrl, String source) {
+        GenerateJob lockedJob = generateJobRepository.findByIdForUpdate(generateJob.getId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.NOT_FOUND, "영상 생성 작업을 찾을 수 없습니다."));
+
+        if (lockedJob.getStatus() == Status.COMPLETED || lockedJob.getStatus() == Status.CANCELED) {
+            log.info(
+                    "fal.ai video result save skipped by terminal status. source={}, jobId={}, requestId={}, status={}",
+                    source,
+                    lockedJob.getId(),
+                    lockedJob.getFalRequestId(),
+                    lockedJob.getStatus()
+            );
             return;
         }
+        MediaFile existingResultMediaFile = findRepresentativeResultMediaFile(lockedJob.getId());
+        if (existingResultMediaFile != null) {
+            log.info(
+                    "fal.ai video result save skipped by existing media. source={}, jobId={}, requestId={}, existingMediaFileId={}, existingFilePath={}",
+                    source,
+                    lockedJob.getId(),
+                    lockedJob.getFalRequestId(),
+                    existingResultMediaFile.getId(),
+                    existingResultMediaFile.getFilePath()
+            );
+            lockedJob.completeJob();
+            return;
+        }
+
+        log.debug(
+                "fal.ai video result save started. source={}, jobId={}, requestId={}, modelId={}, userId={}",
+                source,
+                lockedJob.getId(),
+                lockedJob.getFalRequestId(),
+                lockedJob.getFalModelId(),
+                lockedJob.getUser().getId()
+        );
         String savedVideoPath = falGeneratedVideoStorageService.saveGeneratedVideo(
-                generateJob.getUser().getId(),
+                lockedJob.getUser().getId(),
                 videoUrl
         );
-        GeneratePrompt prompt = generateJob.getPrompts().stream()
+        GeneratePrompt prompt = lockedJob.getPrompts().stream()
                 .filter(generatePrompt -> generatePrompt.getKind() == PromptKind.SCENE)
                 .findFirst()
                 .orElse(null);
 
         MediaFile resultMediaFile = MediaFile.builder()
-                .user(generateJob.getUser())
+                .user(lockedJob.getUser())
                 .type(MediaType.VIDEO)
                 .filePath(savedVideoPath)
-                .model(generateJob.getFalModelId())
-                .quality(generateJob.getRequestQuality())
-                .aspectRatio(generateJob.getRequestAspectRatio())
-                .resolution(generateJob.getRequestResolution())
-                .duration(generateJob.getRequestDuration())
+                .model(lockedJob.getFalModelId())
+                .quality(lockedJob.getRequestQuality())
+                .aspectRatio(lockedJob.getRequestAspectRatio())
+                .resolution(lockedJob.getRequestResolution())
+                .duration(lockedJob.getRequestDuration())
                 .tags("fal.ai")
                 .build();
-        resultMediaFile.connectGeneration(generateJob, prompt);
+        resultMediaFile.connectGeneration(lockedJob, prompt);
 
         mediaFileRepository.save(resultMediaFile);
-        generateJob.completeJob();
+        lockedJob.completeJob();
+        log.info(
+                "fal.ai video result saved. source={}, jobId={}, requestId={}, mediaFileId={}, filePath={}, modelId={}, duration={}",
+                source,
+                lockedJob.getId(),
+                lockedJob.getFalRequestId(),
+                resultMediaFile.getId(),
+                savedVideoPath,
+                lockedJob.getFalModelId(),
+                lockedJob.getRequestDuration()
+        );
     }
 
     private MediaFile findRepresentativeResultMediaFile(Long generateJobId) {

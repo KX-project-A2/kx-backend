@@ -2,8 +2,10 @@ package com.example.kxbackend.domain.generate.repository;
 
 import com.example.kxbackend.domain.generate.entity.GenerateJob;
 import com.example.kxbackend.domain.generate.entity.enums.Status;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -16,6 +18,14 @@ import com.example.kxbackend.domain.generate.entity.enums.Type;
 public interface GenerateJobRepository extends JpaRepository<GenerateJob, Long> {
 
     Optional<GenerateJob> findByFalRequestId(String falRequestId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select job
+            from GenerateJob job
+            where job.id = :jobId
+            """)
+    Optional<GenerateJob> findByIdForUpdate(@Param("jobId") Long jobId);
 
     List<GenerateJob> findAllByStatusInAndType(Collection<Status> statuses, Type type);
 
