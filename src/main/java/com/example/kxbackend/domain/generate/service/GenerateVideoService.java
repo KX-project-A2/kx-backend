@@ -61,7 +61,6 @@ public class GenerateVideoService {
     private static final List<Status> ACTIVE_VIDEO_JOB_STATUSES = List.of(Status.CREATED, Status.SUBMITTED, Status.IN_PROGRESS);
     private static final Pattern STATUS_CODE_PATTERN = Pattern.compile("(?i)status code:?\\s*(\\d{3})");
     private static final String SYNC_SOURCE_WEBHOOK = "WEBHOOK";
-    private static final String SYNC_SOURCE_STATUS_API = "STATUS_API";
     private static final String SYNC_SOURCE_SCHEDULER = "SCHEDULER";
 
     private final GenerateJobRepository generateJobRepository;
@@ -176,7 +175,8 @@ public class GenerateVideoService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "영상 생성 작업을 찾을 수 없습니다.");
         }
 
-        VideoGenerationStatusResult falStatus = syncPendingVideoJob(generateJob, true, SYNC_SOURCE_STATUS_API);
+        VideoGenerationStatusResult falStatus = getFalStatus(generateJob, true);
+        syncVideoProgressStatus(generateJob, falStatus);
         MediaFile resultMediaFile = findRepresentativeResultMediaFile(generateJob.getId());
         return GenerateJobStatusResponseDto.from(generateJob, falStatus, resultMediaFile);
     }
@@ -727,6 +727,15 @@ public class GenerateVideoService {
             return;
         }
         completeVideoJob(generateJob, videoUrl, source);
+    }
+
+    private void syncVideoProgressStatus(GenerateJob generateJob, VideoGenerationStatusResult falStatus) {
+        if (falStatus == null || generateJob.getStatus() != Status.SUBMITTED) {
+            return;
+        }
+        if ("IN_PROGRESS".equalsIgnoreCase(falStatus.status())) {
+            generateJob.progress();
+        }
     }
 
     private VideoGenerationStatusResult getFalStatus(GenerateJob generateJob, boolean withLogs) {
